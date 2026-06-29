@@ -9,12 +9,7 @@ import { chooseImprovedRewrite, parseRehumanizedLines, replaceSentencesInText } 
 import { checkRateLimit } from '@/lib/rate-limit';
 
 const VALID_STYLES = ['academic', 'business', 'creative', 'casual', 'technical', 'humanize', 'professional'];
-  'academic-formal', 'academic-casual', 'journalistic', 'creative-writing',
-  'conversational', 'professional', 'technical', 'persuasive', 'storytelling',
-  'humorous', 'emotional', 'analytical', 'custom',
-  // Legacy values for backward compatibility
-  'neutral', 'formal', 'engaging',
-];
+
 
 export async function POST(request: NextRequest) {
   try {
