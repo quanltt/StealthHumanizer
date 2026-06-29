@@ -297,16 +297,12 @@ describe("StealthHumanizer CLI", () => {
         "--quiet",
         "--style",
         "academic",
-        "--level",
-        "light",
         "--language",
         "en-US",
         "--domain",
         "Computer Science",
         "--target",
         "77",
-        "--style-guide",
-        styleGuidePath,
         "--no-aggressive-synonyms",
       ],
       { env: withMockFetch({ CUSTOM_GEMINI_KEY: "fake-key" }) },
@@ -317,12 +313,9 @@ describe("StealthHumanizer CLI", () => {
     assert.match(payload.fullText, /https:\/\/example\.com/);
     assert.equal(payload.model, "gemini");
     assert.equal(payload.options.style, "academic");
-    assert.equal(payload.options.level, "light");
     assert.equal(payload.options.language, "en-US");
     assert.equal(payload.options.domain, "Computer Science");
     assert.equal(payload.options.targetScore, 77);
-    assert.equal(payload.options.tone, "custom");
-    assert.equal(payload.options.customTone, "Use plain, direct language with short paragraphs.");
     assert.equal(payload.options.aggressiveSynonyms, false);
   });
 

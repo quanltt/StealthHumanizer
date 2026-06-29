@@ -32,9 +32,9 @@ function classifyStdin() {
   try {
     const stat = fstatSync(0);
     // Node's child_process.spawn uses Unix domain socket pairs (not POSIX
-    // FIFOs) on macOS for stdio: 'pipe'. On Linux it uses pipes. Treat both
-    // as "pipe" — the semantic we care about is "data can flow in".
-    if (stat.isFIFO() || stat.isSocket()) return "pipe";
+    // FIFOs) on macOS for stdio: 'pipe'. On Linux it uses pipes. On Windows it uses named pipes which have mode=4096 but all isX() methods return false.
+    // Treat all as "pipe" — the semantic we care about is "data can flow in".
+    if (stat.isFIFO() || stat.isSocket() || stat.mode === 4096) return "pipe";
     if (stat.isCharacterDevice()) {
       return process.stdin.isTTY ? "tty" : "char";
     }
