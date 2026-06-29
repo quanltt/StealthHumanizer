@@ -1,0 +1,32 @@
+{
+  "vocabulary": [
+    "elucidate", "mitigate", "synthesize", "empirical", "paradigm", 
+    "methodology", "nuance", "corollary", "subsequently", "moreover", 
+    "furthermore", "consequently", "nevertheless", "notwithstanding", 
+    "intrinsic", "extrinsic", "dichotomy", "trajectory", "ubiquitous", 
+    "imperative", "robust", "catalyst", "exacerbate", "ameliorate",
+    "delineate", "postulate", "juxtapose", "epistemological", "ontological",
+    "heuristic", "holistic", "pragmatic", "salient", "tangible", 
+    "underpinning", "overarching", "interdisciplinary", "quantitative", 
+    "qualitative", "longitudinal", "cross-sectional", "variance", 
+    "correlation", "causality", "framework", "efficacy", "validate",
+    "substantiate", "corroborate", "refute", "ambiguity", "convergence"
+  ],
+  "phrases": [
+    "In light of these findings",
+    "This study demonstrates",
+    "It is imperative to note",
+    "Contrary to previous assertions",
+    "Further analysis reveals",
+    "The data suggest a robust correlation",
+    "By mitigating these confounding variables",
+    "This approach provides a novel framework",
+    "To elucidate the underlying mechanisms",
+    "Empirical evidence indicates",
+    "A salient feature of this model",
+    "Notwithstanding these limitations",
+    "Subsequent investigations should explore",
+    "The overarching objective was to",
+    "This phenomenon can be attributed to"
+  ]
+}

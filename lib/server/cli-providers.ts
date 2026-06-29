@@ -150,7 +150,7 @@ async function runCli(
 
       if (config.stdinMode === 'pipe') {
         child.stdin?.on('error', () => { /* child exited early; close handler will reject */ });
-        console.error(\'STDINCONTENT IS\', prepared.stdinContent ?? combined);\n        child.stdin?.end(prepared.stdinContent ?? combined);
+        child.stdin?.end(prepared.stdinContent ?? combined);
       }
     });
 

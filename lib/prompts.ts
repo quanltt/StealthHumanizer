@@ -2,6 +2,25 @@
 // Rewritten to actually defeat AI detectors by disrupting statistical fingerprints
 
 import { StylePreset } from './types';
+import q1Vocab from '../data/q1_vocabulary.json';
+
+// Helper to shuffle and sample an array
+function sample<T>(arr: T[], n: number): T[] {
+  const shuffled = [...arr].sort(() => 0.5 - Math.random());
+  return shuffled.slice(0, n);
+}
+
+function getQ1VocabularyInjection(): string {
+  if (!q1Vocab || !q1Vocab.vocabulary || !q1Vocab.phrases) return '';
+  const vocabSample = sample(q1Vocab.vocabulary, 10).join(', ');
+  const phraseSample = sample(q1Vocab.phrases, 3).map(p => `"${p}"`).join(', ');
+  return `
+4. Q1 VOCABULARY INJECTION (CRITICAL FOR AI DETECTION BYPASS):
+You MUST incorporate at least 5 of the following high-tier academic words in your rewrite:
+[ ${vocabSample} ]
+You MUST incorporate at least 1 of the following transition phrases:
+[ ${phraseSample} ]`;
+}
 
 // ==================== TONE CONFIGURATIONS ====================
 
@@ -231,6 +250,7 @@ export function getSystemPrompt(
 ${ANTI_DETECTION_CORE}
 
 ${STYLE_OVERLAYS[style]}
+${style === 'academic' ? getQ1VocabularyInjection() : ''}
 ${sampleSection}
 ${freezeWordsSection}
 
