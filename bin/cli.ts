@@ -7,7 +7,7 @@ import path from 'node:path';
 import { detectAI, getDetailedDetectionReport } from '../lib/detector';
 import { humanizeText } from '../lib/humanizer';
 import { getAvailableProvider, getProvider, PROVIDERS } from '../lib/providers';
-import type { DetectionResult, HumanizationOptions, ModelProvider, RewriteLevel, StylePreset, TonePreset } from '../lib/types';
+import type { DetectionResult, HumanizationOptions, ModelProvider, StylePreset } from '../lib/types';
 
 type Command = 'humanize' | 'detect' | 'providers';
 
@@ -19,23 +19,7 @@ interface ParsedCli {
 }
 
 const COMMANDS: readonly Command[] = ['humanize', 'detect', 'providers'];
-const LEVELS: readonly RewriteLevel[] = ['light', 'medium', 'aggressive', 'ninja'];
 const STYLES: readonly StylePreset[] = ['humanize', 'academic', 'casual', 'professional', 'creative', 'technical'];
-const TONES: readonly TonePreset[] = [
-  'academic-formal',
-  'academic-casual',
-  'journalistic',
-  'creative-writing',
-  'conversational',
-  'professional',
-  'technical',
-  'persuasive',
-  'storytelling',
-  'humorous',
-  'emotional',
-  'analytical',
-  'custom',
-];
 const PROVIDER_IDS = PROVIDERS.map((provider) => provider.id);
 
 const API_KEY_ENV: Record<ModelProvider, string> = {
@@ -83,14 +67,12 @@ const VALUE_FLAGS = new Set([
   'domain',
   'input',
   'language',
-  'level',
   'model',
   'output',
   'style',
   'style-guide',
   'target',
   'text',
-  'tone',
 ]);
 
 const BOOLEAN_FLAGS = new Set([
@@ -338,12 +320,7 @@ function resolveHumanizationOptions(parsed: ParsedCli, provider: ModelProvider):
   const customTone = styleGuidePath ? readTextFile(styleGuidePath) : undefined;
 
   return {
-    level: validateChoice(flagString(parsed, 'level') ?? 'medium', LEVELS, '--level'),
     style: validateChoice(flagString(parsed, 'style') ?? 'casual', STYLES, '--style'),
-    tone: customTone
-      ? 'custom'
-      : validateChoice(flagString(parsed, 'tone') ?? 'conversational', TONES, '--tone'),
-    customTone,
     model: provider,
     targetScore: parseTargetScore(flagString(parsed, 'target')),
     language: flagString(parsed, 'language') ?? 'en',
@@ -511,7 +488,7 @@ Commands:
 
 Examples:
   stealthhumanizer detect --text "This paper explores the multifaceted impacts of..."
-  echo "Draft text" | stealthhumanizer humanize --model gemini --level aggressive
+  echo "Draft text" | stealthhumanizer humanize --model gemini --style academic
   stealthhumanizer humanize --input draft.txt --output humanized.txt --style academic
   stealthhumanizer providers
 
@@ -534,9 +511,7 @@ Output:
 
 Humanization options:
   -m, --model <provider>    Provider id (default: first configured env key, then gemini)
-  --level <level>           light, medium, aggressive, ninja (default: medium)
   --style <style>           humanize, academic, casual, professional, creative, technical
-  --tone <tone>             conversational, academic-formal, journalistic, technical, etc.
   --language <code>         BCP-47 language code (default: en)
   --domain <name>           Optional academic domain hint
   --target <0-100>          Target human score (default: 80)
