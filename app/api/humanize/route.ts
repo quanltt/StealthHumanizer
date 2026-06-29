@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { RewriteLevel, StylePreset, ModelProvider } from '@/lib/types';
+import { ModelProvider, StylePreset } from '@/lib/types';
 import { getSystemPrompt, getSelfCheckPrompt, getCorpusAwareSystemPrompt, LEVEL_PARAMS } from '@/lib/prompts';
 import { getProvider, isCliOnlyProvider } from '@/lib/providers';
 import { generateWithProvider } from '@/lib/server/providers-runtime';
@@ -121,10 +121,10 @@ export async function POST(request: NextRequest) {
       if (styleModel) calibrateWithCorpus(styleModel);
     }
 
-    const params = LEVEL_PARAMS[level as RewriteLevel];
+    const params = { temperature: 0.5, topP: 0.90 };
     const systemPrompt = useCorpus
-      ? getCorpusAwareSystemPrompt(level, style, tone, customTone, writingSample, undefined, language, purpose, freezeWords)
-      : getSystemPrompt(level, style, tone, customTone, writingSample, language, purpose, freezeWords);
+      ? getCorpusAwareSystemPrompt(style, writingSample, undefined, language, freezeWords)
+      : getSystemPrompt(style, writingSample, language, freezeWords);
     const providerInfo = getProvider(model);
     const modelId = providerInfo?.defaultModel || model;
 
@@ -224,10 +224,7 @@ export async function POST(request: NextRequest) {
         const chainResult = await chainModels({
           text: currentText,
           chainModels: chainConfig,
-          level: level as RewriteLevel,
           style: style as StylePreset,
-          tone,
-          customTone,
         });
         currentText = chainResult.text;
         passes += chainResult.passes.length;

@@ -7,7 +7,7 @@ import {
   Type, Languages, Upload, RotateCcw, CheckCircle, AlertTriangle,
   X, FileUp, BarChart2, Shield
 } from 'lucide-react';
-import { RewriteLevel, StylePreset, TonePreset, TextPurpose, HumanizationResult, ModelProvider, SentenceDetectionResult } from '@/lib/types';
+import { StylePreset, HumanizationResult, ModelProvider, SentenceDetectionResult } from '@/lib/types';
 import { SAMPLE_AI_TEXT, SAMPLE_TECHNICAL_TEXT } from '@/lib/prompts';
 import { detectAI } from '@/lib/detector';
 import { getReadabilityLabel } from '@/lib/readability';
@@ -26,13 +26,6 @@ const ComparisonChart = dynamic(
   { ssr: false, loading: () => <div className="h-[220px] bg-dark-800/50 rounded-xl animate-pulse" /> },
 );
 
-const REWRITE_LEVELS: { id: RewriteLevel; name: string; desc: string }[] = [
-  { id: 'light', name: '🪶 Light', desc: 'Subtle fixes' },
-  { id: 'medium', name: '✨ Medium', desc: 'Noticeable rewrite' },
-  { id: 'aggressive', name: '🔥 Aggressive', desc: 'Complete rewrite' },
-  { id: 'ninja', name: '🥷 Ninja', desc: 'Maximum stealth' },
-];
-
 const STYLES: { id: StylePreset; name: string; icon: string }[] = [
   { id: 'humanize', name: 'Humanize', icon: '🧑' },
   { id: 'academic', name: 'Academic', icon: '🎓' },
@@ -40,22 +33,6 @@ const STYLES: { id: StylePreset; name: string; icon: string }[] = [
   { id: 'casual', name: 'Casual', icon: '☕' },
   { id: 'creative', name: 'Creative', icon: '🎨' },
   { id: 'technical', name: 'Technical', icon: '⚙️' },
-];
-
-const TONES: { id: TonePreset; name: string; emoji: string }[] = [
-  { id: 'academic-formal', name: 'Academic Formal', emoji: '🎓' },
-  { id: 'academic-casual', name: 'Academic Casual', emoji: '📚' },
-  { id: 'journalistic', name: 'Journalistic', emoji: '📰' },
-  { id: 'creative-writing', name: 'Creative', emoji: '✍️' },
-  { id: 'conversational', name: 'Conversational', emoji: '💬' },
-  { id: 'professional', name: 'Professional', emoji: '💼' },
-  { id: 'technical', name: 'Technical', emoji: '⚙️' },
-  { id: 'persuasive', name: 'Persuasive', emoji: '🎯' },
-  { id: 'storytelling', name: 'Storytelling', emoji: '📖' },
-  { id: 'humorous', name: 'Humorous', emoji: '😂' },
-  { id: 'emotional', name: 'Emotional', emoji: '❤️' },
-  { id: 'analytical', name: 'Analytical', emoji: '🔬' },
-  { id: 'custom', name: 'Custom', emoji: '🎨' },
 ];
 
 const LANGUAGES = [
@@ -78,18 +55,6 @@ const LANGUAGES = [
   { code: 'tr', name: 'Turkish' },
 ];
 
-const PURPOSES: { id: TextPurpose; name: string; icon: string }[] = [
-  { id: 'general', name: 'General', icon: 'Type' },
-  { id: 'essay', name: 'Essay', icon: 'FileText' },
-  { id: 'article', name: 'Article', icon: 'Newspaper' },
-  { id: 'blog', name: 'Blog', icon: 'PenLine' },
-  { id: 'email', name: 'Email', icon: 'Mail' },
-  { id: 'marketing', name: 'Marketing', icon: 'Megaphone' },
-  { id: 'report', name: 'Report', icon: 'BarChart3' },
-  { id: 'story', name: 'Story', icon: 'BookOpen' },
-  { id: 'social-media', name: 'Social', icon: 'Share2' },
-];
-
 interface GrammarIssue {
   type: string;
   original: string;
@@ -108,11 +73,7 @@ export default function Humanizer({ showToast, onGoToSettings, isFirstVisit }: H
   const [result, setResult] = useState<HumanizationResult | null>(null);
   const [loading, setLoading] = useState(false);
   const [progress, setProgress] = useState({ pass: 0, max: 0, message: '' });
-  const [level, setLevel] = useState<RewriteLevel>('medium');
   const [style, setStyle] = useState<StylePreset>('humanize');
-  const [tone, setTone] = useState<TonePreset>('conversational');
-  const [customTone, setCustomTone] = useState('');
-  const [purpose, setPurpose] = useState<TextPurpose>('general');
   const [language, setLanguage] = useState('auto');
   const [targetScore, setTargetScore] = useState(80);
   const [expandedSentence, setExpandedSentence] = useState<number | null>(null);
@@ -180,14 +141,10 @@ export default function Humanizer({ showToast, onGoToSettings, isFirstVisit }: H
     const handler = (e: KeyboardEvent) => {
       if (e.ctrlKey && e.key === 'Enter') { e.preventDefault(); handleHumanize(); }
       if (e.ctrlKey && e.shiftKey && e.key === 'C') { e.preventDefault(); result && handleCopy(); }
-      if (e.ctrlKey && e.key === '1') { e.preventDefault(); setLevel('light'); }
-      if (e.ctrlKey && e.key === '2') { e.preventDefault(); setLevel('medium'); }
-      if (e.ctrlKey && e.key === '3') { e.preventDefault(); setLevel('aggressive'); }
-      if (e.ctrlKey && e.key === '4') { e.preventDefault(); setLevel('ninja'); }
     };
     window.addEventListener('keydown', handler);
     return () => window.removeEventListener('keydown', handler);
-  }, [inputText, result, level]);
+  }, [inputText, result]);
 
   const getApiCredentials = () => {
     const keys = Object.fromEntries(
@@ -199,7 +156,7 @@ export default function Humanizer({ showToast, onGoToSettings, isFirstVisit }: H
   };
 
   function buildLocalPrivacyResult(startedAt: number): HumanizationResult {
-    const fullText = localHumanizeText(inputText, { level, style, tone });
+    const fullText = localHumanizeText(inputText, { style });
     const detection = detectAI(fullText);
     const sentences = buildSentenceResults(inputText, fullText).map((row, index) => ({
       original: row.original,
@@ -217,7 +174,7 @@ export default function Humanizer({ showToast, onGoToSettings, isFirstVisit }: H
       timestamp: Date.now(),
       passes: 1,
       finalScore: detection.score,
-      options: { level, style, tone, customTone, language, purpose, model: 'ollama' },
+      options: { style, language, model: 'ollama' },
       semanticFidelity: assessSemanticFidelity(inputText, fullText),
       observability: { latencyMs: Math.round(performance.now() - startedAt), estimatedCostUsd: 0, streamingAvailable: false, privacyMode: true },
     };
@@ -260,7 +217,7 @@ export default function Humanizer({ showToast, onGoToSettings, isFirstVisit }: H
     setGrammarIssues([]);
     setCorrectedText('');
     setPipelineStep('Step 1: LLM Rewrite...');
-    setProgress({ pass: 0, max: level === 'ninja' ? 3 : level === 'aggressive' ? 3 : 2, message: 'Layer 1: LLM Rewrite...' });
+    setProgress({ pass: 0, max: 2, message: 'Layer 1: LLM Rewrite...' });
 
     try {
       // Get all available API keys
@@ -272,8 +229,8 @@ export default function Humanizer({ showToast, onGoToSettings, isFirstVisit }: H
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          text: inputText, level, style, tone, customTone,
-          model: providerId, apiKey, targetScore, language, writingSample, purpose,
+          text: inputText, style,
+          model: providerId, apiKey, targetScore, language, writingSample,
           maxOutputWords: maxOutputWords || undefined,
           postprocess: enablePostprocess,
           chainModels: enableChain ? selectedChainModels : [],
@@ -346,7 +303,7 @@ export default function Humanizer({ showToast, onGoToSettings, isFirstVisit }: H
       if (!apiKey) return;
       const resp = await fetch('/api/alternative', {
         method: 'POST', headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ original: sentence.original, current: sentence.humanized, level, style, tone, customTone, model: providerId, apiKey }),
+        body: JSON.stringify({ original: sentence.original, current: sentence.humanized, style, model: providerId, apiKey }),
       });
       if (resp.ok) { const data = await resp.json(); setAlternatives(prev => ({ ...prev, [index]: data.alternatives })); }
     } catch {}
@@ -415,8 +372,8 @@ export default function Humanizer({ showToast, onGoToSettings, isFirstVisit }: H
         const resp = await fetch('/api/rehumanize', {
           method: 'POST', headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({
-            flaggedSentences: flagged, level: 'ninja', style, tone, customTone,
-            model: providerId, apiKey, fullText: currentFullText, purpose,
+            flaggedSentences: flagged, style, 
+            model: providerId, apiKey, fullText: currentFullText,
           }),
         });
         if (!resp.ok) break;
@@ -656,20 +613,7 @@ export default function Humanizer({ showToast, onGoToSettings, isFirstVisit }: H
 
       {/* Controls */}
       <div className="space-y-4">
-        {/* Rewrite Level */}
-        <div>
-          <label className="block text-sm font-medium text-dark-300 mb-2">Rewrite Level</label>
-          <div className="flex gap-2 flex-wrap">
-            {REWRITE_LEVELS.map(l => (
-              <button key={l.id} onClick={() => setLevel(l.id)}
-                className={`px-3 py-2 sm:px-4 sm:py-2.5 rounded-lg text-xs sm:text-sm font-medium transition-all flex-1 sm:flex-none min-w-0 ${level === l.id ? 'bg-accent-500 text-white shadow-lg shadow-accent-500/25' : 'bg-dark-800 text-dark-300 hover:text-white hover:bg-dark-700'}`}>
-                {l.name} <span className="hidden sm:inline text-xs opacity-70">{l.desc}</span>
-              </button>
-            ))}
-          </div>
-        </div>
-
-        {/* Style + Purpose + Tone */}
+        {/* Style */}
         <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4">
           <div>
             <label className="block text-sm font-medium text-dark-300 mb-2">Writing Style</label>
@@ -682,35 +626,7 @@ export default function Humanizer({ showToast, onGoToSettings, isFirstVisit }: H
               ))}
             </div>
           </div>
-          <div>
-            <label className="block text-sm font-medium text-dark-300 mb-2">Purpose</label>
-            <div className="flex gap-2 flex-wrap">
-              {PURPOSES.map(p => (
-                <button key={p.id} onClick={() => setPurpose(p.id)}
-                  className={`px-2 py-1.5 sm:px-3 sm:py-2 rounded-lg text-xs sm:text-sm font-medium transition-all flex items-center gap-1 ${purpose === p.id ? 'bg-accent-500 text-white shadow-lg shadow-accent-500/25' : 'bg-dark-800 text-dark-300 hover:text-white hover:bg-dark-700'}`}>
-                  {p.name}
-                </button>
-              ))}
-            </div>
-          </div>
-          <div>
-            <label className="block text-sm font-medium text-dark-300 mb-2">Tone</label>
-            <select value={tone} onChange={e => setTone(e.target.value as TonePreset)}
-              className="w-full px-3 py-2 bg-dark-800 border border-dark-700/50 rounded-lg text-white text-sm focus:outline-none focus:ring-2 focus:ring-accent-500/50">
-              {TONES.map(t => <option key={t.id} value={t.id}>{t.emoji} {t.name}</option>)}
-            </select>
-          </div>
         </div>
-
-        {/* Custom Tone */}
-        {tone === 'custom' && (
-          <div>
-            <label className="block text-sm font-medium text-dark-300 mb-2">Custom Tone Description</label>
-            <input type="text" value={customTone} onChange={e => setCustomTone(e.target.value)}
-              placeholder="e.g., Write like a tired grad student at 3am..."
-              className="w-full px-4 py-2 bg-dark-800 border border-dark-700/50 rounded-lg text-white placeholder-dark-500 text-sm focus:outline-none focus:ring-2 focus:ring-accent-500/50" />
-          </div>
-        )}
 
         {/* Advanced Options */}
         <div>
@@ -888,7 +804,7 @@ export default function Humanizer({ showToast, onGoToSettings, isFirstVisit }: H
           {/* Recommended settings callout for first-time users */}
           {isFirstVisit && (
             <div className="mb-3 px-4 py-2.5 rounded-lg bg-accent-500/10 border border-accent-500/20 text-sm text-accent-300 animate-fade-in">
-              Recommended: <strong>Medium</strong> level + <strong>Humanize</strong> style + <strong>Conversational</strong> tone. Sample text loaded — click Humanize to try it!
+              Recommended: <strong>Humanize</strong> style. Sample text loaded — click Humanize to try it!
             </div>
           )}
           <div className="flex items-center justify-between mb-2">
@@ -904,24 +820,26 @@ export default function Humanizer({ showToast, onGoToSettings, isFirstVisit }: H
           </div>
 
           {/* Drop zone */}
-          <div
-            onDragOver={e => { e.preventDefault(); setDragOver(true); }}
-            onDragLeave={() => setDragOver(false)}
-            onDrop={handleDrop}
-            className={`relative`}
-          >
-            {dragOver && (
-              <div className="absolute inset-0 z-10 border-2 border-dashed border-accent-400 bg-accent-500/10 rounded-xl flex items-center justify-center">
-                <div className="text-center text-accent-400">
-                  <FileUp className="w-8 h-8 mx-auto mb-2" />
-                  <p className="text-sm font-medium">Drop file here</p>
-                  <p className="text-xs">.txt, .docx, .pdf</p>
+          <div className="perspective-container">
+            <div
+              onDragOver={e => { e.preventDefault(); setDragOver(true); }}
+              onDragLeave={() => setDragOver(false)}
+              onDrop={handleDrop}
+              className={`relative panel-3d hover-lift`}
+            >
+              {dragOver && (
+                <div className="absolute inset-0 z-10 border-2 border-dashed border-accent-400 bg-accent-500/10 rounded-xl flex items-center justify-center">
+                  <div className="text-center text-accent-400">
+                    <FileUp className="w-8 h-8 mx-auto mb-2" />
+                    <p className="text-sm font-medium">Drop file here</p>
+                    <p className="text-xs">.txt, .docx, .pdf</p>
+                  </div>
                 </div>
-              </div>
-            )}
-            <textarea value={inputText} onChange={e => setInputText(e.target.value)}
-              placeholder="Paste your AI-generated text here... or drag & drop a .txt/.docx/.pdf file"
-              className="w-full h-64 p-4 glass-card rounded-xl text-white placeholder-dark-500 resize-none focus:outline-none focus:ring-2 focus:ring-accent-500/50 transition-all text-sm leading-relaxed" />
+              )}
+              <textarea value={inputText} onChange={e => setInputText(e.target.value)}
+                placeholder="Paste your AI-generated text here... or drag & drop a .txt/.docx/.pdf file"
+                className="w-full h-64 p-4 glass-card rounded-xl text-white placeholder-dark-500 resize-none focus:outline-none focus:ring-2 focus:ring-accent-500/50 transition-all text-sm leading-relaxed" />
+            </div>
           </div>
 
           <div className="mt-3 grid md:grid-cols-1 gap-2">
@@ -1320,7 +1238,7 @@ export default function Humanizer({ showToast, onGoToSettings, isFirstVisit }: H
             </div>
             <div>
               <div className="w-8 h-8 rounded-full bg-accent-500/20 text-accent-400 flex items-center justify-center mx-auto mb-2 text-sm font-bold">2</div>
-              <p>Choose level, style, and tone</p>
+              <p>Choose  style, and tone</p>
               <p className="text-xs mt-1 text-dark-500">🧑 Humanize is recommended</p>
             </div>
             <div>

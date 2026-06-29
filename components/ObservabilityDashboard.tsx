@@ -12,7 +12,7 @@ import {
 import { detectAI } from '@/lib/detector';
 import { assessSemanticFidelity } from '@/lib/semantic-fidelity';
 import { localHumanizeText } from '@/lib/local-humanizer';
-import { RewriteLevel, TonePreset } from '@/lib/types';
+import {  } from '@/lib/types';
 
 interface ObservabilityDashboardProps {
   showToast: (type: 'success' | 'error' | 'info' | 'warning', message: string) => void;
@@ -20,8 +20,6 @@ interface ObservabilityDashboardProps {
 
 interface BenchmarkSample {
   label: string;
-  level: RewriteLevel;
-  tone: TonePreset;
   text: string;
 }
 
@@ -38,26 +36,18 @@ interface BenchmarkRow {
 const BENCHMARK_SAMPLES: BenchmarkSample[] = [
   {
     label: 'AI slop / workflow',
-    level: 'ninja',
-    tone: 'conversational',
     text: 'Furthermore, it is important to note that this solution demonstrates the potential to optimize workflows across distributed teams.',
   },
   {
     label: 'Governance / professional',
-    level: 'aggressive',
-    tone: 'professional',
     text: 'The results indicate that robust governance can facilitate reliable adoption while minimizing operational uncertainty.',
   },
   {
     label: 'Marketing / generic',
-    level: 'ninja',
-    tone: 'journalistic',
     text: 'In conclusion, this comprehensive approach leverages automation to deliver seamless experiences for users.',
   },
   {
     label: 'Numbers / fidelity guard',
-    level: 'medium',
-    tone: 'analytical',
     text: 'In 2025, the system reduced review time by 37% while preserving audit logs for 14 regulated teams.',
   },
 ];
@@ -81,7 +71,7 @@ export default function ObservabilityDashboard({ showToast }: ObservabilityDashb
     setBenchmarking(true);
     try {
       const rows = BENCHMARK_SAMPLES.map(sample => {
-        const rewritten = localHumanizeText(sample.text, { level: sample.level, style: 'humanize', tone: sample.tone });
+        const rewritten = localHumanizeText(sample.text, { style: 'humanize' });
         const before = detectAI(sample.text).score;
         const after = detectAI(rewritten).score;
         const semantic = assessSemanticFidelity(sample.text, rewritten);

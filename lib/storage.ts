@@ -63,7 +63,12 @@ export function addToHistory(entry: Partial<HistoryEntry> & { originalText: stri
     timestamp: Date.now(),
     originalText: entry.originalText,
     humanizedText: entry.humanizedText,
-    options: entry.options || { level: 'medium', style: 'academic', tone: 'conversational', model: 'gemini', targetScore: 80, language: 'en' },
+    options: {
+      style: 'academic',
+      model: 'gemini',
+      targetScore: 90,
+      language: 'en',
+    },
   };
   const newEntry = { ...defaults, ...entry, id: defaults.id, timestamp: defaults.timestamp };
 

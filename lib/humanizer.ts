@@ -20,8 +20,8 @@ async function humanizeChunk(
 ): Promise<string> {
   // Use corpus-aware prompt if style model is available
   const systemPrompt = hasStyleModel()
-    ? getCorpusAwareSystemPrompt(options.level, options.style, options.tone, options.customTone, undefined, options.domain, options.language)
-    : getSystemPrompt(options.level, options.style, options.tone, options.customTone, undefined, options.language);
+    ? getCorpusAwareSystemPrompt(options.style, undefined, options.domain, options.language)
+    : getSystemPrompt(options.style, undefined, options.language);
   const providerInfo = getProvider(options.model);
   const model = customModel || providerInfo?.defaultModel || options.model;
 
@@ -55,7 +55,7 @@ async function rehumanizeFlaggedSentences(
   options: HumanizationOptions,
   apiKey: string
 ): Promise<string[]> {
-  const rehumanizePrompt = getRehumanizePrompt(flaggedSentences, options.level, options.style, options.tone, options.customTone);
+  const rehumanizePrompt = getRehumanizePrompt(flaggedSentences, options.style);
   const providerInfo = getProvider(options.model);
   const model = providerInfo?.defaultModel || options.model;
   const result = await generateWithProvider(options.model, apiKey, rehumanizePrompt, '', { model });
@@ -78,7 +78,7 @@ export async function humanizeText(
   // Use corpus-calibrated thresholds if available
   const calibratedThresholds = hasStyleModel() ? getCorpusCalibratedThresholds() : null;
   const targetScore = options.targetScore || calibratedThresholds?.targetScore || 80;
-  const maxPasses = options.level === 'ninja' ? 3 : options.level === 'aggressive' ? 3 : 1;
+  const maxPasses = 3;
 
   // Extract structural regions (code, links, URLs, mentions, blockquotes, ...)
   // before any processing. They survive the pipeline as opaque placeholders and
@@ -184,7 +184,7 @@ export async function getAlternatives(
   apiKey: string,
   count: number = 3
 ): Promise<string[]> {
-  const systemPrompt = getSystemPrompt(options.level, options.style, options.tone, options.customTone);
+  const systemPrompt = getSystemPrompt(options.style);
   return generateAlternatives(options.model, apiKey, originalSentence, currentHumanized, systemPrompt, count);
 }
 

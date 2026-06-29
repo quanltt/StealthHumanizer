@@ -79,7 +79,7 @@ export async function POST(request: NextRequest) {
     let usedFallback = false;
 
     try {
-      const rehumanizePrompt = getRehumanizePrompt(cleanFlagged, level || 'ninja', style || 'humanize', tone || 'conversational', customTone, purpose);
+      const rehumanizePrompt = getRehumanizePrompt(cleanFlagged, style || 'humanize');
       const contextPrompt = fullText
         ? `${rehumanizePrompt}\n\nFULL TEXT CONTEXT (do not rewrite all of this; only rewrite the numbered flagged sentences above):\n"""\n${String(fullText).slice(0, 6000)}\n"""`
         : rehumanizePrompt;

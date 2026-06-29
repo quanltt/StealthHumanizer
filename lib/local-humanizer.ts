@@ -1,28 +1,17 @@
-import { RewriteLevel, StylePreset, TonePreset } from '@/lib/types';
+import { StylePreset } from '@/lib/types';
 import { postprocess } from '@/lib/postprocess';
 import { splitIntoSentences } from '@/lib/text-utils';
 
 interface LocalHumanizeOptions {
-  level?: RewriteLevel;
   style?: StylePreset;
-  tone?: TonePreset;
   preserveParagraphs?: boolean;
 }
 
 interface RewriteRule {
   pattern: RegExp;
   replacements: string[];
-  levels?: RewriteLevel[];
   styles?: StylePreset[];
-  tones?: TonePreset[];
 }
-
-const LEVEL_STRENGTH: Record<RewriteLevel, number> = {
-  light: 1,
-  medium: 2,
-  aggressive: 3,
-  ninja: 4,
-};
 
 const PHRASE_RULES: RewriteRule[] = [
   { pattern: /\bit is important to note that\b/gi, replacements: ['notably', 'it is worth noting', 'the key point is'] },
@@ -40,11 +29,11 @@ const PHRASE_RULES: RewriteRule[] = [
   { pattern: /\brealm\b/gi, replacements: ['area', 'field', 'space'] },
   { pattern: /\bplays a crucial role\b/gi, replacements: ['matters', 'is central', 'does important work'] },
   { pattern: /\bcomprehensive\b/gi, replacements: ['thorough', 'broad', 'complete'] },
-  { pattern: /\bdemonstrates\b/gi, replacements: ['shows', 'makes clear', 'points to'], levels: ['aggressive', 'ninja'] },
-  { pattern: /\bfacilitates\b/gi, replacements: ['helps', 'makes possible', 'supports'], levels: ['aggressive', 'ninja'] },
-  { pattern: /\boptimize\b/gi, replacements: ['improve', 'tune', 'make more efficient'], levels: ['medium', 'aggressive', 'ninja'] },
-  { pattern: /\binnovative\b/gi, replacements: ['new', 'practical', 'fresh'], levels: ['medium', 'aggressive', 'ninja'] },
-  { pattern: /\bcutting-edge\b/gi, replacements: ['newer', 'modern', 'current'], levels: ['medium', 'aggressive', 'ninja'] },
+  { pattern: /\bdemonstrates\b/gi, replacements: ['shows', 'makes clear', 'points to'] },
+  { pattern: /\bfacilitates\b/gi, replacements: ['helps', 'makes possible', 'supports'] },
+  { pattern: /\boptimize\b/gi, replacements: ['improve', 'tune', 'make more efficient'] },
+  { pattern: /\binnovative\b/gi, replacements: ['new', 'practical', 'fresh'] },
+  { pattern: /\bcutting-edge\b/gi, replacements: ['newer', 'modern', 'current'] },
 ];
 
 function hashText(input: string): number {
@@ -60,12 +49,10 @@ function pick<T>(values: T[], seed: number): T {
   return values[seed % values.length];
 }
 
-function applyPhraseRules(sentence: string, level: RewriteLevel, style: StylePreset, tone: TonePreset, seed: number): string {
+function applyPhraseRules(sentence: string, style: StylePreset, seed: number): string {
   let output = sentence;
   for (const rule of PHRASE_RULES) {
-    if (rule.levels && !rule.levels.includes(level)) continue;
     if (rule.styles && !rule.styles.includes(style)) continue;
-    if (rule.tones && !rule.tones.includes(tone)) continue;
     output = output.replace(rule.pattern, () => pick(rule.replacements, seed + output.length));
   }
   return output;
@@ -83,19 +70,19 @@ function softenOverconfidentClaims(sentence: string, seed: number): string {
     .replace(/\bunparalleled\b/gi, 'notable');
 }
 
-function varyOpening(sentence: string, index: number, level: RewriteLevel, _style: StylePreset, _tone: TonePreset, seed: number): string {
+function varyOpening(sentence: string, index: number, _style: StylePreset, seed: number): string {
   // Only at stronger levels, only occasionally, and only with short connectors
   // that read naturally as a lead-in to an independent clause. Avoid quirky
   // openers ("Here is the thing,") that produce awkward comma splices.
-  if (LEVEL_STRENGTH[level] < 3 || sentence.length < 70 || index % 4 !== 2) return sentence;
+  if (sentence.length < 70 || index % 4 !== 2) return sentence;
   if (/^(In practice|Put simply|Technically|Operationally|Overall|That means|Even so|That said|Still|In short|On balance)/i.test(sentence)) return sentence;
   const safeConnectors = ['In practice', 'Even so', 'That said', 'Still', 'In short', 'On balance'];
   const connector = pick(safeConnectors, seed + index);
   return `${connector}, ${sentence.charAt(0).toLowerCase()}${sentence.slice(1)}`;
 }
 
-function splitLongSentence(sentence: string, level: RewriteLevel): string {
-  if (LEVEL_STRENGTH[level] < 3 || sentence.length < 180) return sentence;
+function splitLongSentence(sentence: string): string {
+  if (sentence.length < 180) return sentence;
   const match = sentence.match(/^(.{80,}?)(,\s+(?:and|but|while|which|because)\s+)(.{60,})$/i);
   if (!match) return sentence;
   const first = match[1].trim().replace(/[;,:-]+$/, '');
@@ -109,13 +96,12 @@ function preserveTerminalSpacing(original: string, rewritten: string): string {
 }
 
 function rewriteSentence(sentence: string, index: number, options: Required<LocalHumanizeOptions>): string {
-  const seed = hashText(`${sentence}:${index}:${options.level}:${options.style}:${options.tone}`);
-  let output = sentence.trim();
-  output = applyPhraseRules(output, options.level, options.style, options.tone, seed);
-  output = softenOverconfidentClaims(output, seed);
-  output = varyOpening(output, index, options.level, options.style, options.tone, seed);
-  output = splitLongSentence(output, options.level);
-  return preserveTerminalSpacing(sentence, output);
+  const seed = hashText(`${sentence}:${index}:`);
+  let humanized = applyPhraseRules(sentence.trim(), options.style, seed);
+  humanized = softenOverconfidentClaims(humanized, seed);
+  humanized = varyOpening(humanized, index, options.style, seed);
+  humanized = splitLongSentence(humanized);
+  return preserveTerminalSpacing(sentence, humanized);
 }
 
 function rewriteParagraph(paragraph: string, paragraphIndex: number, options: Required<LocalHumanizeOptions>): string {
@@ -136,9 +122,7 @@ function rewriteParagraph(paragraph: string, paragraphIndex: number, options: Re
 
 export function localHumanizeText(text: string, options: LocalHumanizeOptions = {}): string {
   const resolved: Required<LocalHumanizeOptions> = {
-    level: options.level ?? 'medium',
     style: options.style ?? 'humanize',
-    tone: options.tone ?? 'conversational',
     preserveParagraphs: options.preserveParagraphs ?? true,
   };
   const paragraphs = resolved.preserveParagraphs ? text.split(/(\n{2,})/) : [text];

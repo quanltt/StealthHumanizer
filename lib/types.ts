@@ -33,42 +33,17 @@ export interface Provider {
 
 // ==================== HUMANIZATION TYPES ====================
 
-export type RewriteLevel = 'light' | 'medium' | 'aggressive' | 'ninja';
 export type StylePreset = 'humanize' | 'academic' | 'casual' | 'professional' | 'creative' | 'technical';
-
-export type TonePreset = 
-  | 'academic-formal' | 'academic-casual'
-  | 'journalistic' | 'creative-writing'
-  | 'conversational' | 'professional'
-  | 'technical' | 'persuasive'
-  | 'storytelling' | 'humorous'
-  | 'emotional' | 'analytical'
-  | 'custom';
-
-export interface ToneConfig {
-  id: TonePreset;
-  name: string;
-  description: string;
-  icon: string;
-  personalityTraits: string[];
-  vocabularyPreferences: string[];
-  writingPatterns: string[];
-}
 
 export interface ApiKeys {
   [key: string]: string | undefined;
 }
 
 export interface HumanizationOptions {
-  level: RewriteLevel;
   style: StylePreset;
-  tone: TonePreset;
-  customTone?: string;
   model: ModelProvider;
   targetScore?: number;
   language: string;
-  purpose?: TextPurpose;
-  /** Academic domain for corpus-calibrated style matching */
   domain?: string;
   /** Enable aggressive context-blind synonym swap pass. Default: true.
    *  Set to false to skip this step (useful for technical content where bad
@@ -243,15 +218,3 @@ export interface Toast {
 }
 
 export type Tab = 'humanizer' | 'batch' | 'detector' | 'dashboard' | 'enhance' | 'history' | 'settings';
-
-export type TextPurpose =
-  | 'essay' | 'article' | 'blog' | 'email'
-  | 'marketing' | 'report' | 'story' | 'social-media' | 'general';
-
-export interface PurposeConfig {
-  id: TextPurpose;
-  name: string;
-  icon: string;
-  description: string;
-  promptOverlay: string;
-}

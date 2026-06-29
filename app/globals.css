@@ -139,6 +139,20 @@ body {
 }
 .animate-float { animation: float 3s ease-in-out infinite; }
 
+.perspective-container {
+  perspective: 1200px;
+}
+
+.panel-3d {
+  transition: transform 0.5s cubic-bezier(0.23, 1, 0.32, 1), box-shadow 0.5s ease;
+  transform-style: preserve-3d;
+}
+
+.panel-3d:hover {
+  transform: rotateX(2deg) rotateY(-1deg) translateY(-2px);
+  box-shadow: -10px 10px 30px -10px rgba(0, 255, 200, 0.15), 10px 10px 30px -10px rgba(138, 43, 226, 0.15);
+}
+
 /* Fade in up */
 @keyframes fadeInUp {
   from { opacity: 0; transform: translateY(20px); }

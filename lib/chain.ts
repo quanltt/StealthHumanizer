@@ -1,19 +1,16 @@
 // StealthHumanizer - Multi-Model Chaining (Layer 3)
 // Chain rewrites through different LLM models to mix statistical fingerprints.
 
-import { ModelProvider } from './types';
+import { ModelProvider, StylePreset } from './types';
 import { getProvider } from './providers';
 import { generateWithProvider } from './server/providers-runtime';
 import { getSystemPrompt } from './prompts';
 import { postprocess } from './postprocess';
 
-interface ChainOptions {
+export interface ChainOptions {
   text: string;
   chainModels: { provider: ModelProvider; apiKey: string }[];
-  level: 'light' | 'medium' | 'aggressive' | 'ninja';
-  style: 'humanize' | 'academic' | 'casual' | 'professional' | 'creative' | 'technical';
-  tone: string;
-  customTone?: string;
+  style: StylePreset;
   onProgress?: (step: string, model: string) => void;
 }
 
@@ -27,7 +24,7 @@ interface ChainResult {
  * Each model adds its own statistical fingerprint, making detection much harder.
  */
 export async function chainModels(options: ChainOptions): Promise<ChainResult> {
-  const { text, chainModels, level, style, tone, customTone, onProgress } = options;
+  const { text, chainModels, style, onProgress } = options;
   
   let currentText = text;
   const passes: { provider: ModelProvider; modelName: string }[] = [];
@@ -44,8 +41,7 @@ export async function chainModels(options: ChainOptions): Promise<ChainResult> {
 
     // Build a progressively lighter prompt for each chain pass
     // First pass: full rewrite. Later passes: lighter touch to avoid destroying content.
-    const chainLevel = i === 0 ? level : 'medium';
-    let systemPrompt = getSystemPrompt(chainLevel, style, tone as any, customTone);
+    let systemPrompt = getSystemPrompt(style);
 
     // Optimize multi-chain passes: Pass 1 is the Structural Editor, Pass 2+ is the Vocabulary Polisher
     if (i > 0) {

@@ -1,11 +1,11 @@
 // StealthHumanizer v3 - Anti-Detection Prompt Engine
 // Rewritten to actually defeat AI detectors by disrupting statistical fingerprints
 
-import { RewriteLevel, StylePreset, TonePreset, TextPurpose } from './types';
+import { StylePreset } from './types';
 
 // ==================== TONE CONFIGURATIONS ====================
 
-export const TONE_CONFIGS: Record<TonePreset, {
+export const TONE_CONFIGS: Record<string, {
   name: string; personalityTraits: string[]; vocabularyPreferences: string[];
   writingPatterns: string[];
 }> = {
@@ -156,19 +156,6 @@ OUTPUT: Return ONLY the rewritten text. No explanations.`;
 
 // ==================== LEVEL-SPECIFIC INSTRUCTIONS ====================
 
-const LEVEL_INSTRUCTIONS: Record<RewriteLevel, string> = {
-  light: `LEVEL: Light — Minimal changes.
-Only fix obvious AI patterns. Keep 95% of the original text intact. Make it flow more naturally without altering the original style.`,
-
-  medium: `LEVEL: Medium — Moderate rewrite.
-Simplify the text and make it read like a real human wrote it. Reduce the AI footprint while preserving the exact meaning and overall tone.`,
-
-  aggressive: `LEVEL: Aggressive — Strong rewrite.
-Rewrite sentences in your own words while maintaining the original tone and intent. Vary sentence lengths and use more natural phrasing. Focus on simplicity and removing robotic patterns.`,
-
-  ninja: `LEVEL: Ninja — Maximum stealth.
-Rewrite the text to sound completely natural and human, stripping away all predictable AI phrasing. The output must retain the core meaning and appropriate tone (formal stays formal, etc.) but must feel unmistakably human.`,
-};
 
 // ==================== STYLE-SPECIFIC RULES ====================
 
@@ -192,64 +179,6 @@ Incorporate words like: imperative, streamline, objective, intervention, traject
 
 // ==================== PURPOSE-SPECIFIC OVERLAYS ====================
 
-export const PURPOSE_CONFIGS: Record<TextPurpose, {
-  name: string; icon: string; description: string; promptOverlay: string;
-}> = {
-  essay: {
-    name: 'Essay',
-    icon: 'FileText',
-    description: 'Academic or argumentative essay',
-    promptOverlay: `Purpose: Essay. Maintain a clear thesis and argument structure. Each paragraph should develop one idea. Use evidence and reasoning, not just assertions. Avoid bullet points — write in prose. End with a strong concluding thought (not "in conclusion").`,
-  },
-  article: {
-    name: 'Article',
-    icon: 'Newspaper',
-    description: 'Blog post or online article',
-    promptOverlay: `Purpose: Article. Engaging introduction that hooks the reader. Clear subheadings or section breaks. Mix facts with analysis. End with a takeaway or call to action. Keep paragraphs short (2-4 sentences) for readability.`,
-  },
-  blog: {
-    name: 'Blog Post',
-    icon: 'PenLine',
-    description: 'Personal or professional blog',
-    promptOverlay: `Purpose: Blog. Conversational and personal. Use "I" and "you." Short paragraphs. Include opinions and personal takes. Headings are OK. Write like you're explaining to a smart friend.`,
-  },
-  email: {
-    name: 'Email',
-    icon: 'Mail',
-    description: 'Professional or personal email',
-    promptOverlay: `Purpose: Email. Clear and direct. State the purpose early. Use short paragraphs (1-3 sentences). Professional but warm tone. End with a clear next step or question.`,
-  },
-  marketing: {
-    name: 'Marketing',
-    icon: 'Megaphone',
-    description: 'Copy, ads, or landing pages',
-    promptOverlay: `Purpose: Marketing. Persuasive and benefit-focused. Use concrete numbers and specific claims instead of vague adjectives. Address the reader directly with "you." Keep sentences punchy. Focus on outcomes.`,
-  },
-  report: {
-    name: 'Report',
-    icon: 'BarChart3',
-    description: 'Business or research report',
-    promptOverlay: `Purpose: Report. Structured and factual. Use clear section breaks. Present data with context. Use "we found" or "the data shows" rather than passive constructions. Include specific numbers. Professional but not stiff.`,
-  },
-  story: {
-    name: 'Story',
-    icon: 'BookOpen',
-    description: 'Creative fiction or narrative',
-    promptOverlay: `Purpose: Story. Show don't tell. Use sensory details and dialogue. Vary paragraph length for pacing. Build scenes rather than summarizing. Let the reader experience events rather than reading about them.`,
-  },
-  'social-media': {
-    name: 'Social Media',
-    icon: 'Share2',
-    description: 'Twitter, LinkedIn, Instagram, etc.',
-    promptOverlay: `Purpose: Social media. Hook in the first line. Keep it concise. Use line breaks for readability. One idea per paragraph. Conversational tone. OK to use casual language and mild slang.`,
-  },
-  general: {
-    name: 'General',
-    icon: 'Type',
-    description: 'Any other text type',
-    promptOverlay: '',
-  },
-};
 
 // ==================== HUMAN WRITING SAMPLE HANDLING ====================
 
@@ -277,60 +206,40 @@ IMPORTANT: Match this person's writing patterns. If they write short punchy sent
 
 // ==================== PERSONA INJECTION ====================
 
-const PERSONAS: Record<RewriteLevel, string> = {
-  light: `You're a student doing a quick proofread. Fix obvious AI patterns. Subtle changes only.`,
-  medium: `You're rewriting this in your own words. Make it sound natural and human.`,
-  aggressive: `You're a blogger rewriting this for your audience. Strong voice, interesting, not academic — but every sentence must be complete and correct.`,
-  ninja: `You're rewriting this to sound completely natural. Write like a real person — clear, varied, and genuinely human — while keeping every sentence complete, grammatically correct, and faithful to the original meaning.`,
-};
 
 // ==================== MAIN PROMPT GENERATOR ====================
 
 export function getSystemPrompt(
-  level: RewriteLevel,
   style: StylePreset,
-  tone: TonePreset = 'conversational',
-  customTone?: string,
   writingSample?: string,
   language?: string,
-  purpose?: TextPurpose,
   freezeWords?: string
 ): string {
   // Use Chinese-specific prompts for Chinese languages
   if (language === 'zh-CN' || language === 'zh-TW') {
-    return getChineseSystemPrompt(level, style, tone, customTone, writingSample, language === 'zh-TW', freezeWords);
+    return getChineseSystemPrompt(style, writingSample, language === 'zh-TW', freezeWords);
   }
 
-  const toneConfig = TONE_CONFIGS[tone];
-  const toneSection = tone === 'custom' && customTone
-    ? `CUSTOM TONE: ${customTone}`
-    : tone !== 'custom'
-    ? `TONE: ${toneConfig.name}
-Personality: ${toneConfig.personalityTraits.join(', ')}`
-    : '';
-
   const sampleSection = writingSample ? buildSamplePrompt(writingSample) : '';
-
-  const purposeSection = purpose && purpose !== 'general'
-    ? `\n\n${PURPOSE_CONFIGS[purpose].promptOverlay}`
-    : '';
 
   const freezeWordsSection = freezeWords?.trim()
     ? `\n\nFREEZE WORDS: The following words/phrases MUST be preserved exactly as written and MUST NOT be changed or replaced with synonyms:\n[${freezeWords}]\n`
     : '';
 
-  return `${PERSONAS[level]}
+  return `You are an elite text humanizer. Your task is to rewrite AI-generated text into a perfectly natural, human style.
 
 ${ANTI_DETECTION_CORE}
 
-${STYLE_OVERLAYS[style]}${purposeSection}
-${toneSection}
+${STYLE_OVERLAYS[style]}
 ${sampleSection}
 ${freezeWordsSection}
 
-${LEVEL_INSTRUCTIONS[level]}
+MEANING PRESERVATION RULES:
+1. Preserve all facts, figures, names, and dates exactly.
+2. Do not hallucinate or invent new information.
+3. Preserve the core arguments and conclusions.
 
-Return ONLY the rewritten text.`;
+OUTPUT: Return ONLY the rewritten text. No explanations.`;
 }
 
 // ==================== SELF-CHECK PROMPT ====================
@@ -359,23 +268,9 @@ Return ONLY the rewritten text.`;
 
 export function getRehumanizePrompt(
   flaggedSentences: string[],
-  level: RewriteLevel,
   style: StylePreset,
-  tone: TonePreset = 'conversational',
-  customTone?: string,
-  purpose?: TextPurpose
 ): string {
-  const toneNote = tone === 'custom' && customTone
-    ? `Tone: ${customTone}`
-    : `Tone: ${TONE_CONFIGS[tone]?.name || tone}`;
-  const purposeNote = purpose && PURPOSE_CONFIGS[purpose]?.promptOverlay
-    ? PURPOSE_CONFIGS[purpose].promptOverlay
-    : 'Purpose: preserve the original use case and meaning.';
-
   return `These sentences were flagged as AI-generated. Rewrite each one so it reads like clear, polished, natural human writing — the kind you would find in a well-edited article or report.
-
-${toneNote}
-${purposeNote}
 
 RULES FOR EACH SENTENCE (follow strictly):
 - Keep the SAME meaning, facts, arguments, numbers, and details. Do not add, drop, or invent information.
@@ -572,7 +467,7 @@ const TRADITIONAL_CHINESE_NOTES = `
 - 重点在于消除AI痕迹，而非改变地区用语习惯`;
 
 // Chinese-specific level instructions
-const CHINESE_LEVEL_INSTRUCTIONS: Record<RewriteLevel, string> = {
+const CHINESE_LEVEL_INSTRUCTIONS: Record<string, string> = {
   light: `改写等级：轻度（LIGHT）
 - 替换2-3个AI典型连接词
 - 打破1-2处并列结构
@@ -626,10 +521,7 @@ const CHINESE_LEVEL_INSTRUCTIONS: Record<RewriteLevel, string> = {
 // ==================== CHINESE PROMPT GENERATOR ====================
 
 export function getChineseSystemPrompt(
-  level: RewriteLevel,
   style: StylePreset,
-  tone: TonePreset = 'conversational',
-  customTone?: string,
   writingSample?: string,
   isTraditional: boolean = false,
   freezeWords?: string
@@ -637,10 +529,6 @@ export function getChineseSystemPrompt(
   const modeSection = style === 'academic'
     ? CHINESE_ACADEMIC_MODE
     : CHINESE_GENERAL_MODE;
-
-  const toneSection = tone === 'custom' && customTone
-    ? `自定义语调（CUSTOM TONE）: ${customTone}`
-    : '';
 
   const sampleSection = writingSample ? buildSamplePrompt(writingSample) : '';
 
@@ -656,15 +544,12 @@ export function getChineseSystemPrompt(
 你了解知网AIGC检测系统、万方、维普等中文AI检测工具的工作原理，并知道如何规避它们。
 
 ${CHINESE_ANTI_DETECTION_CORE}
-${level !== 'light' ? CHINESE_BURSTINESS_ENGINE : ''}
-${level !== 'light' ? CHINESE_STRUCTURAL_DISRUPTION : ''}
-${level !== 'light' ? CHINESE_IDIOM_INSERTION : ''}
+${CHINESE_BURSTINESS_ENGINE}
+${CHINESE_STRUCTURAL_DISRUPTION}
+${CHINESE_IDIOM_INSERTION}
 ${modeSection}
-${toneSection}
 ${traditionalSection}
 ${sampleSection}
-
-${CHINESE_LEVEL_INSTRUCTIONS[level]}
 
 意义保持规则（MEANING PRESERVATION RULES）：
 1. 原文中的所有事实、数据、人名、日期和观点都必须保留
@@ -684,23 +569,19 @@ import { buildStyleInjectionPrompt, hasStyleModel } from './style-model';
  * rules with specific style constraints extracted from real academic papers.
  */
 export function getCorpusAwareSystemPrompt(
-  level: RewriteLevel,
   style: StylePreset,
-  tone: TonePreset = 'conversational',
-  customTone?: string,
   writingSample?: string,
   domain?: string,
   language?: string,
-  purpose?: TextPurpose,
   freezeWords?: string
 ): string {
-  const base = getSystemPrompt(level, style, tone, customTone, writingSample, language, purpose, freezeWords);
+  const base = getSystemPrompt(style, writingSample, language, freezeWords);
   if (!hasStyleModel()) return base;
   return base + buildStyleInjectionPrompt(domain);
 }
 
 // Temperature and top_p settings per level
-export const LEVEL_PARAMS: Record<RewriteLevel, { temperature: number; topP: number }> = {
+export const LEVEL_PARAMS: Record<string, { temperature: number; topP: number }> = {
   light: { temperature: 0.3, topP: 0.85 },
   medium: { temperature: 0.5, topP: 0.90 },
   aggressive: { temperature: 0.7, topP: 0.95 },

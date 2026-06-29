@@ -100,7 +100,7 @@ export default function History({ showToast, setActiveTab }: HistoryProps) {
                   <div className="flex items-center gap-3 mt-1 text-xs text-dark-500">
                     <span>{formatDate(entry.timestamp)}</span>
                     <span>{entry.wordCount?.input} → {entry.wordCount?.output} words</span>
-                    <span className="capitalize">{entry.options.level} / {entry.options.style}</span>
+                    <span className="capitalize">{entry.options.style}</span>
                     <span className="text-accent-400">{entry.model}</span>
                   </div>
                 </div>

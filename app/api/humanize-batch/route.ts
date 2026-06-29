@@ -1,10 +1,9 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { detectAI } from '@/lib/detector';
 import { postprocess } from '@/lib/postprocess';
-import { getSystemPrompt, LEVEL_PARAMS } from '@/lib/prompts';
+import { getSystemPrompt } from '@/lib/prompts';
 import { generateWithProvider } from '@/lib/server/providers-runtime';
 import { isCliOnlyProvider } from '@/lib/providers';
-import { RewriteLevel } from '@/lib/types';
 import { asyncMapConcurrent } from '@/lib/batch';
 import { checkRateLimit } from '@/lib/rate-limit';
 
@@ -30,7 +29,7 @@ export async function POST(request: NextRequest) {
     }
 
     const body = await request.json();
-    const { texts, level = 'medium', style = 'humanize', tone = 'conversational', model, apiKey } = body;
+    const { texts, style = 'humanize', model, apiKey } = body;
 
     if (!model || !apiKey) {
       return NextResponse.json({ success: false, error: 'Missing required fields: model and apiKey' }, { status: 400 });
@@ -47,8 +46,8 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ success: false, error: `Batch exceeds maximum of ${MAX_BATCH_COUNT} items` }, { status: 400 });
     }
 
-    const params = LEVEL_PARAMS[level as RewriteLevel] ?? LEVEL_PARAMS['medium'];
-    const systemPrompt = getSystemPrompt(level, style, tone);
+    const params = { temperature: 0.5, topP: 0.90 };
+    const systemPrompt = getSystemPrompt(style);
 
     const results = await asyncMapConcurrent(
       texts,
