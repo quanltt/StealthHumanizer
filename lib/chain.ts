@@ -45,7 +45,12 @@ export async function chainModels(options: ChainOptions): Promise<ChainResult> {
     // Build a progressively lighter prompt for each chain pass
     // First pass: full rewrite. Later passes: lighter touch to avoid destroying content.
     const chainLevel = i === 0 ? level : 'medium';
-    const systemPrompt = getSystemPrompt(chainLevel, style, tone as any, customTone);
+    let systemPrompt = getSystemPrompt(chainLevel, style, tone as any, customTone);
+
+    // Optimize multi-chain passes: Pass 1 is the Structural Editor, Pass 2+ is the Vocabulary Polisher
+    if (i > 0) {
+      systemPrompt += `\n\n=== ROLE: POLISHING EDITOR ===\nThis text has already been structurally humanized. Your strict focus for this pass is on VOCABULARY ENHANCEMENT and PERFECT FLOW. Do not alter the paragraph lengths or sentence counts. Upgrade the verbs and adjectives to match a premium human standard (e.g., Q1 Journal or Executive level) while guaranteeing flawless grammar.`;
+    }
 
     try {
       const result = await generateWithProvider(

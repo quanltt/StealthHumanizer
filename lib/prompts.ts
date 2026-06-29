@@ -174,9 +174,15 @@ Rewrite the text to sound completely natural and human, stripping away all predi
 
 const STYLE_OVERLAYS: Record<StylePreset, string> = {
   humanize: `Style: General Natural. Write clearly and naturally. Avoid overly formal academic language unless the topic demands it.`,
-  academic: `Style: Academic but real. Like a student paper, not a journal article. Use "I" sometimes. Cite casually: "Smith (2023) makes a good point about this." Don't over-explain.`,
+  academic: `Style: Elite Academic (Q1 Journal Level). Write like a published researcher in a top-tier peer-reviewed journal. Use precise, nuanced vocabulary. Avoid vague assertions.
+CRITICAL EXAMPLE OF DESIRED VOCABULARY AND SENTENCE STRUCTURE:
+"While initial studies suggested a robust correlation, empirical evidence now indicates that we must carefully elucidate the underlying mechanisms before drawing definitive conclusions. By mitigating these variables, we can synthesize a more accurate theoretical framework."
+Incorporate words like: elucidate, empirical, mitigate, synthesize, corollary, nuance.`,
   casual: `Style: Casual and friendly, like explaining something to a friend. Use contractions freely. Keep it relaxed and conversational, but every sentence must still be complete and grammatically correct — no fragments or unfinished thoughts.`,
-  professional: `Style: Professional but real person. Direct, specific, no buzzwords. Short paragraphs. "We found" not "It was discovered."`,
+  professional: `Style: Elite Professional (Executive Level). Direct, authoritative, and strategic. Avoid marketing fluff or buzzwords.
+CRITICAL EXAMPLE OF DESIRED VOCABULARY AND SENTENCE STRUCTURE:
+"To effectively navigate the current market constraints, it is imperative to streamline operational redundancies. Our primary objective is to execute a targeted intervention that addresses the core inefficiencies without disrupting the overarching strategic trajectory."
+Incorporate words like: imperative, streamline, objective, intervention, trajectory. Short, powerful paragraphs.`,
   creative: `Style: Vivid and engaging. Sensory details, fresh comparisons. Unexpected word choices. The writing should feel alive.`,
   technical: `Style: Technical but human. Precise terms, concrete examples. "You'll see" not "It can be observed." Step-by-step.`,
 };

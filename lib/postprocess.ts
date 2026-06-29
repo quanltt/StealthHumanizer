@@ -341,6 +341,48 @@ function manipulateSentenceLengths(text: string): string {
   return result.join(' ');
 }
 
+// ==================== 2d'. BURSTINESS INJECTION (EVASION) ====================
+
+function ensureBurstiness(text: string): string {
+  // Detect low sentence length variance (burstiness) and fix it to evade detectors.
+  const paragraphs = splitParagraphs(text);
+  const result: string[] = [];
+
+  for (const p of paragraphs) {
+    const sentences = splitSentences(p);
+    if (sentences.length < 3) {
+      result.push(p);
+      continue;
+    }
+
+    const lengths = sentences.map(s => wordCount(s));
+    
+    // Check if sentences are too uniform (e.g., adjacent sentences differ by < 8 words)
+    let isUniform = true;
+    for (let i = 0; i < lengths.length - 1; i++) {
+      if (Math.abs(lengths[i] - lengths[i + 1]) > 8) {
+        isUniform = false;
+        break;
+      }
+    }
+
+    if (isUniform && chance(0.75)) {
+      // Forcefully merge two adjacent short/medium sentences to create a spike in variance
+      for (let i = 0; i < sentences.length - 1; i++) {
+        if (lengths[i] < 20 && lengths[i + 1] < 20) {
+          // Remove the punctuation of the first sentence and join with semicolon
+          const s1 = sentences[i].replace(/[.!?]+$/, '');
+          const s2 = sentences[i + 1].charAt(0).toLowerCase() + sentences[i + 1].slice(1);
+          sentences.splice(i, 2, s1 + '; ' + s2);
+          break; // Do one merge per uniform paragraph
+        }
+      }
+    }
+    result.push(sentences.join(' '));
+  }
+  return joinParagraphs(result);
+}
+
 // ==================== 2e. WORD-LEVEL PERPLEXITY INJECTION ====================
 
 function injectPerplexity(text: string): string {
@@ -760,6 +802,7 @@ export function postprocess(text: string, options?: PostProcessOptions): string 
   result = swapSynonyms(result, options?.synonymIntensity);
   result = addPunctuationNoise(result);
   result = manipulateSentenceLengths(result);
+  result = ensureBurstiness(result);
   result = disruptFlow(result, style);
 
   // NOTE: Sentence reordering and paragraph randomization have been removed.

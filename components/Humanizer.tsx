@@ -603,10 +603,10 @@ export default function Humanizer({ showToast, onGoToSettings, isFirstVisit }: H
       {/* Header */}
       <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
         <div>
-          <h2 className="text-2xl font-bold text-white flex items-center gap-2">
-            <Sparkles className="w-6 h-6 text-accent-400" /> AI Text Humanizer
+          <h2 className="text-3xl font-extrabold flex items-center gap-2 hero-gradient drop-shadow-md">
+            <Sparkles className="w-7 h-7 text-accent-400 animate-pulse" /> AI Text Humanizer
           </h2>
-          <p className="text-dark-400 mt-1">Transform AI text into natural, human-like writing</p>
+          <p className="text-dark-300 mt-1">Transform AI text into natural, human-like writing</p>
         </div>
         <div className="flex gap-2 flex-wrap">
           <button onClick={() => setShowShortcuts(!showShortcuts)} className="flex items-center gap-1 px-3 py-2 rounded-lg bg-dark-800 hover:bg-dark-700 text-dark-400 hover:text-white text-sm transition-colors">
@@ -933,7 +933,7 @@ export default function Humanizer({ showToast, onGoToSettings, isFirstVisit }: H
 
           <div className="mt-3">
             <button onClick={handleHumanize} disabled={loading || !inputText.trim()}
-              className="w-full flex items-center justify-center gap-2 px-6 py-3 rounded-xl bg-gradient-to-r from-accent-500 to-accent-600 hover:from-accent-600 hover:to-accent-700 text-white font-medium transition-all shadow-lg shadow-accent-500/25 disabled:opacity-50 disabled:cursor-not-allowed">
+              className="w-full flex items-center justify-center gap-2 px-6 py-4 rounded-xl bg-gradient-to-r from-accent-500 to-accent-600 hover:from-accent-400 hover:to-accent-500 text-white font-bold text-lg transition-all shadow-xl shadow-accent-500/20 disabled:opacity-50 disabled:cursor-not-allowed hover-lift hover:shadow-accent-500/40">
               {loading ? (
                 <><RefreshCw className="w-5 h-5 animate-spin" /> {pipelineStep || `${progress.message} (Pass ${progress.pass}/${progress.max})`}</>
               ) : (
