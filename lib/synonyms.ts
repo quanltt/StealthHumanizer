@@ -1019,16 +1019,6 @@ const SAFE_SYNONYMS: Record<string, string[]> = {
   'way': ['method', 'approach', 'manner', 'strategy'],
   'work': ['job', 'task', 'labor', 'effort'],
   'worth': ['valuable', 'meaningful', 'of value'],
-  'huge': ['massive', 'enormous', 'gigantic'],
-  'tiny': ['minuscule', 'microscopic', 'small'],
-  'fast': ['quick', 'rapid', 'speedy'],
-  'slow': ['gradual', 'leisurely', 'unhurried'],
-  'smart': ['clever', 'intelligent', 'sharp'],
-  'happy': ['joyful', 'cheerful', 'glad'],
-  'sad': ['unhappy', 'sorrowful', 'down'],
-  'angry': ['mad', 'furious', 'upset'],
-  'brave': ['courageous', 'bold', 'fearless'],
-  'strong': ['powerful', 'sturdy', 'robust'],
 };
 
 // Helper to get a random synonym for a word
