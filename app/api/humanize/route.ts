@@ -75,10 +75,9 @@ export async function POST(request: NextRequest) {
     }
 
     const {
-      text, level, style, tone, customTone, model, apiKey,
+      text, style, model, apiKey,
       targetScore, language, writingSample,
-      purpose,
-      postprocess: enablePostprocess = true,
+            postprocess: enablePostprocess = true,
       chainModels: chainModelIds = [],
       apiKeys: extraApiKeys = {},
       batchTexts = [],
@@ -171,9 +170,7 @@ export async function POST(request: NextRequest) {
       });
     }
 
-    const maxPasses = level === 'ninja' ? 3 : level === 'aggressive' ? 2 : level === 'medium' ? 2 : 1;
-    void maxPasses;
-    const target = targetScore || 80;
+            const target = targetScore || 80;
     void target;
     const chunks = chunkText(text, 2500);
 
@@ -301,7 +298,7 @@ export async function POST(request: NextRequest) {
       sentences, fullText: finalText, model, modelName: providerInfo?.name || model,
       wordCount: { input: countWords(text), output: countWords(finalText) },
       timestamp: Date.now(), passes, finalScore: finalDetection.score,
-      options: { level, style, tone, language, purpose },
+      options: { style, language },
       confidenceReport,
       runtimeModelScore,
       semanticFidelity,

@@ -8,9 +8,7 @@ import { ModelProvider, StylePreset } from '@/lib/types';
 import { chooseImprovedRewrite, parseRehumanizedLines, replaceSentencesInText } from '@/lib/rehumanize';
 import { checkRateLimit } from '@/lib/rate-limit';
 
-const VALID_LEVELS = ['light', 'medium', 'aggressive', 'ninja'];
 const VALID_STYLES = ['academic', 'business', 'creative', 'casual', 'technical', 'humanize', 'professional'];
-const VALID_TONES = [
   'academic-formal', 'academic-casual', 'journalistic', 'creative-writing',
   'conversational', 'professional', 'technical', 'persuasive', 'storytelling',
   'humorous', 'emotional', 'analytical', 'custom',
@@ -36,7 +34,7 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ success: false, error: 'Request body too large.' }, { status: 413 });
     }
 
-    const { flaggedSentences, level, style, tone, customTone, model, apiKey, fullText, purpose } = await request.json();
+    const { flaggedSentences, style, model, apiKey, fullText} = await request.json();
 
     // Input validation
     if (!Array.isArray(flaggedSentences) || flaggedSentences.length === 0) {
@@ -48,15 +46,7 @@ export async function POST(request: NextRequest) {
     if (fullText && typeof fullText === 'string' && fullText.length > 50000) {
       return NextResponse.json({ success: false, error: 'fullText exceeds 50,000 character limit' }, { status: 400 });
     }
-    if (level && !VALID_LEVELS.includes(level)) {
-      return NextResponse.json({ success: false, error: `Invalid level. Must be one of: ${VALID_LEVELS.join(', ')}` }, { status: 400 });
-    }
-    if (style && !VALID_STYLES.includes(style)) {
-      return NextResponse.json({ success: false, error: `Invalid style. Must be one of: ${VALID_STYLES.join(', ')}` }, { status: 400 });
-    }
-    if (tone && !VALID_TONES.includes(tone)) {
-      return NextResponse.json({ success: false, error: `Invalid tone. Must be one of: ${VALID_TONES.join(', ')}` }, { status: 400 });
-    }
+
 
     if (isCliOnlyProvider(model as ModelProvider)) {
       return NextResponse.json({ success: false, error: `Provider "${model}" is a local CLI runner and is not available over the web API. Use the stealthhumanizer CLI.` }, { status: 400 });
