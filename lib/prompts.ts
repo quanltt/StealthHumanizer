@@ -146,6 +146,12 @@ CRITICAL RULES — Follow these EXACTLY:
    - Did you drop any sentences? If so, add them back in rewritten form.
    - Is every sentence complete and grammatically correct?
 
+8. GRAMMAR AND QUALITY RECHECK (FINAL STEP BEFORE OUTPUT):
+   - Review your entire response internally for grammatical correctness.
+   - Fix any awkward phrasing, missing words, subject-verb disagreements, or punctuation errors.
+   - Ensure you did not introduce any weird sentence fragments or run-on sentences.
+   - The final text MUST read flawlessly, as if professionally edited.
+
 OUTPUT: Return ONLY the rewritten text. No explanations.`;
 
 // ==================== LEVEL-SPECIFIC INSTRUCTIONS ====================
@@ -375,6 +381,7 @@ RULES FOR EACH SENTENCE (follow strictly):
 - Match the register of the original: formal/academic text stays formal; do not inject casual language into formal prose.
 - Do NOT use em-dashes (—). Use commas, periods, or semicolons instead.
 - Output exactly ONE rewritten sentence per input sentence, in the same order.
+- FINAL RECHECK: Review your sentences before outputting. Ensure they are flawlessly grammatical, flow perfectly, and have zero awkward phrasing.
 
 SENTENCES TO REWRITE:
 ${flaggedSentences.map((s, i) => `${i + 1}. ${s}`).join('\n')}
