@@ -5,7 +5,7 @@ import { detectAI } from './detector';
 // left dangling commas / lowercase sentence starts). Word-boundary safe.
 const AI_PHRASE_REPLACEMENTS: Array<[RegExp, string]> = [
   [/\bFurthermore,?\s*/gi, 'Also, '],
-  [/\bMoreover,?\s*/gi, 'Plus, '],
+  [/\bMoreover,?\s*/gi, 'Additionally, '],
   [/\bAdditionally,?\s*/gi, 'Also, '],
   [/\bConsequently,?\s*/gi, 'So '],
   [/\bTherefore,?\s*/gi, 'So '],

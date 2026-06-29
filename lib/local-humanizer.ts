@@ -27,8 +27,8 @@ const LEVEL_STRENGTH: Record<RewriteLevel, number> = {
 const PHRASE_RULES: RewriteRule[] = [
   { pattern: /\bit is important to note that\b/gi, replacements: ['notably', 'it is worth noting', 'the key point is'] },
   { pattern: /\bin conclusion,?\b/gi, replacements: ['to wrap this up,', 'overall,', 'in the end,'] },
-  { pattern: /\bfurthermore,?\b/gi, replacements: ['also,', 'just as important,', 'beyond that,'] },
-  { pattern: /\bmoreover,?\b/gi, replacements: ['plus,', 'along with that,', 'also,'] },
+  { pattern: /\bfurthermore,?\b/gi, replacements: ['also,', 'along with that,'] },
+  { pattern: /\bmoreover,?\b/gi, replacements: ['additionally,', 'along with that,', 'also,'] },
   { pattern: /\btherefore\b/gi, replacements: ['so', 'as a result', 'that is why'] },
   { pattern: /\bhowever\b/gi, replacements: ['but', 'still', 'even so'] },
   { pattern: /\butilize\b/gi, replacements: ['use'] },

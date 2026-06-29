@@ -175,9 +175,12 @@ Rewrite the text to sound completely natural and human, stripping away all predi
 const STYLE_OVERLAYS: Record<StylePreset, string> = {
   humanize: `Style: General Natural. Write clearly and naturally. Avoid overly formal academic language unless the topic demands it.`,
   academic: `Style: Elite Academic (Q1 Journal Level). Write like a published researcher in a top-tier peer-reviewed journal. Use precise, nuanced vocabulary. Avoid vague assertions.
-CRITICAL EXAMPLE OF DESIRED VOCABULARY AND SENTENCE STRUCTURE:
+CRITICAL RULES FOR RESEARCH-GRADE WRITING:
+1. NEVER use colloquial transition words (e.g., DO NOT use "plus", "also", "besides", "like", "a lot").
+2. ALWAYS use Academic Word List (AWL) vocabulary for transitions and framing (e.g., MUST use "furthermore", "moreover", "consequently", "subsequently", "nevertheless").
+3. CRITICAL EXAMPLE OF DESIRED VOCABULARY AND SENTENCE STRUCTURE:
 "While initial studies suggested a robust correlation, empirical evidence now indicates that we must carefully elucidate the underlying mechanisms before drawing definitive conclusions. By mitigating these variables, we can synthesize a more accurate theoretical framework."
-Incorporate words like: elucidate, empirical, mitigate, synthesize, corollary, nuance.`,
+Incorporate words like: elucidate, empirical, mitigate, synthesize, corollary, paradigm, methodology, nuance.`,
   casual: `Style: Casual and friendly, like explaining something to a friend. Use contractions freely. Keep it relaxed and conversational, but every sentence must still be complete and grammatically correct — no fragments or unfinished thoughts.`,
   professional: `Style: Elite Professional (Executive Level). Direct, authoritative, and strategic. Avoid marketing fluff or buzzwords.
 CRITICAL EXAMPLE OF DESIRED VOCABULARY AND SENTENCE STRUCTURE:

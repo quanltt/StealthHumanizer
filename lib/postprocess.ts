@@ -591,9 +591,9 @@ function aggressiveSynonymSwap(text: string, style?: StylePreset): string {
 
   const replacements: [RegExp, string[]][] = [
     [/\bdemonstrates?\b/gi, ['shows', 'makes clear', 'reveals', 'tells us']],
-    [/\bfurthermore\b/gi, ['also', 'and', 'on top of that', 'plus']],
+    [/\bfurthermore\b/gi, ['also', 'and', 'on top of that']],
     [/\bmoreover\b/gi, ['also', 'and', 'besides', "what's more"]],
-    [/\badditionally\b/gi, ['also', 'and', 'plus', 'on top of that']],
+    [/\badditionally\b/gi, ['also', 'and', 'on top of that']],
     [/\bconsequently\b/gi, ['so', 'which means', 'as a result', 'because of that']],
     [/\bsignificantly\b/gi, isFormal ? ['noticeably', 'considerably', 'to a meaningful extent'] : ['a lot', 'noticeably', 'quite a bit']],
     [/\bsubstantially\b/gi, isFormal ? ['considerably', 'to a large extent', 'materially'] : ['a lot', 'quite a bit', 'in a big way']],
@@ -685,14 +685,19 @@ function softenStiffOpeners(sentence: string, isFormal: boolean): string {
     [/^In conclusion,?\s*/i, 'Overall,'],
     [/^In summary,?\s*/i, 'In short,'],
     [/^Furthermore,?\s*/i, 'Also,'],
-    [/^Moreover,?\s*/i, 'On top of that,'],
-    [/^Additionally,?\s*/i, 'Plus,'],
+    [/^Moreover,?\s*/i, 'Additionally,'],
+    [/^Additionally,?\s*/i, 'Also,'],
+    [/^Subsequently,?\s*/i, 'Then,'],
+    [/^Consequently,?\s*/i, 'So,'],
+    [/^Hence,?\s*/i, 'So,'],
+    [/^Thus,?\s*/i, 'So,'],
+    [/^Therefore,?\s*/i, 'So,'],
   ];
   const stiffCasual: [RegExp, string][] = [
     [/^In conclusion,?\s*/i, 'So,'],
     [/^Furthermore,?\s*/i, 'Also,'],
-    [/^Moreover,?\s*/i, 'Plus,'],
-    [/^Additionally,?\s*/i, 'And,'],
+    [/^Moreover,?\s*/i, 'Additionally,'],
+    [/^Additionally,?\s*/i, 'Also,'],
     [/^Therefore,?\s*/i, 'So,'],
   ];
   const rules = isFormal ? stiffFormal : [...stiffCasual, ...stiffFormal];

@@ -669,8 +669,12 @@ async function geminiGenerate(
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({
+      systemInstruction: {
+        parts: [{ text: systemPrompt }]
+      },
       contents: [{
-        parts: [{ text: `${systemPrompt}\n\n${userPrompt}` }]
+        role: "user",
+        parts: [{ text: userPrompt }]
       }],
       generationConfig: {
         temperature: options.temperature ?? 0.9,
