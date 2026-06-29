@@ -83,7 +83,7 @@ function isInQuotes(text: string, index: number): boolean {
 
 // ==================== 2a. SYNONYM SWAPPING ====================
 
-function swapSynonyms(text: string, intensity: number = 25): string {
+function swapSynonyms(text: string, intensity: number = 10): string {
   // Only swap the safest single-word synonyms at low probability.
   // No context-blind replacements — only words where all synonyms
   // preserve meaning and grammatical role.
@@ -738,39 +738,37 @@ export function postprocess(text: string, options?: PostProcessOptions): string 
 
   if (light) {
     result = swapSynonyms(result, options?.synonymIntensity);
-    if (chance(0.5)) result = addPunctuationNoise(result);
-    // Skip disruptFlow in light mode: it injects emphasis fillers ("Right.",
-    // "Sound familiar?", "Funny enough.") and conjunction starters at fixed
-    // per-paragraph rates, which compounds badly on long inputs and reads as
-    // an AI tic itself. Full mode keeps it for cases that explicitly want
-    // structural disruption.
+    // Skip addPunctuationNoise in light mode: expanding/contracting random
+    // contractions and adding double spaces adds no anti-detection value and
+    // can break text in subtle ways.
     return result
       .replace(/,\s*,/g, ',')
       .replace(/\s+,/g, ',')
+      .replace(/\.\s*\./g, '.')
       .replace(/\s{2,}/g, ' ')
+      // Remove dangling punctuation fragments (standalone periods, commas)
+      .replace(/(?:^|\n)\s*[.,;:!?]\s*(?:\n|$)/g, '\n')
+      // Remove orphan single-character lines
+      .replace(/(?:^|\n)\s*[a-zA-Z]\s*(?:\n|$)/g, '\n')
       .trim()
       .split(/\n/)
       .map(line => capitalizeSentenceStarts(line))
       .join('\n');
   }
 
-  // Full post-processing pipeline
+  // Full post-processing pipeline (less aggressive than before)
   result = swapSynonyms(result, options?.synonymIntensity);
   result = addPunctuationNoise(result);
   result = manipulateSentenceLengths(result);
   result = disruptFlow(result, style);
 
-  // Sentence reordering
-  const paragraphs = splitParagraphs(result);
-  const reorderedParagraphs = paragraphs.map(p => reorderSentences(p));
-  result = joinParagraphs(reorderedParagraphs);
+  // NOTE: Sentence reordering and paragraph randomization have been removed.
+  // They destroyed logical flow and paragraph structure, making text incoherent.
+  // The LLM rewrite + synonym swaps + flow disruption are sufficient for
+  // anti-detection without breaking meaning.
 
-  result = randomizeParagraphs(result);
-
-  // Additional collocation passes
-  for (let i = 0; i < 3; i++) {
-    result = applyRandomCollocation(result);
-  }
+  // Single additional collocation pass (reduced from 3 to 1)
+  result = applyRandomCollocation(result);
 
   // Safe typographic variation (smart quotes, en-dashes)
   result = addTypographicVariation(result);
@@ -811,7 +809,12 @@ function readabilityGuard(original: string, processed: string): string {
   const procScores = calculateReadability(processed);
   const drop = origScores.fleschReadingEase - procScores.fleschReadingEase;
 
-  if (drop > 15) {
+  // Also check if sentence count changed drastically (sign of broken text)
+  const origSentences = original.split(/[.!?]+/).filter(s => s.trim().length > 0).length;
+  const procSentences = processed.split(/[.!?]+/).filter(s => s.trim().length > 0).length;
+  const sentenceRatio = origSentences > 0 ? procSentences / origSentences : 1;
+
+  if (drop > 15 || sentenceRatio < 0.5 || sentenceRatio > 2.0) {
     // Revert to a lighter version: only synonym swaps + collocations
     let safe = aggressiveSynonymSwap(original);
     safe = injectPerplexity(safe);

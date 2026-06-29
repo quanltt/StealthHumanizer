@@ -94,25 +94,59 @@ export function buildSentenceResults(
 ): SentenceAlignment[] {
   const origSentences = splitIntoSentences(originalText);
   const humanizedSentences = splitIntoSentences(humanizedText);
-  const maxLen = Math.max(origSentences.length, humanizedSentences.length);
 
+  // If counts are close (within 2), do standard alignment
   const results: SentenceAlignment[] = [];
-  for (let i = 0; i < maxLen; i++) {
-    const original = origSentences[i] || '';
-    const humanized = humanizedSentences[i] || '';
 
-    // Skip fully-empty rows.
-    if (!original.trim() && !humanized.trim()) continue;
+  if (Math.abs(origSentences.length - humanizedSentences.length) <= 2) {
+    const maxLen = Math.max(origSentences.length, humanizedSentences.length);
+    for (let i = 0; i < maxLen; i++) {
+      const original = origSentences[i] || '';
+      const humanized = humanizedSentences[i] || '';
 
-    // If the humanized cell is a bare fragment, fold it into the previous row's
-    // humanized text so it never appears as its own (misleading) line.
-    if (original.trim() && isFragment(humanized) && results.length > 0) {
-      const prev = results[results.length - 1];
-      prev.humanized = `${prev.humanized} ${humanized}`.trim();
-      continue;
+      // Skip fully-empty rows.
+      if (!original.trim() && !humanized.trim()) continue;
+
+      // If the humanized cell is a bare fragment, fold it into the previous row's
+      // humanized text so it never appears as its own (misleading) line.
+      if (original.trim() && isFragment(humanized) && results.length > 0) {
+        const prev = results[results.length - 1];
+        prev.humanized = `${prev.humanized} ${humanized}`.trim();
+        continue;
+      }
+
+      results.push({ original, humanized, index: results.length });
+    }
+  } else {
+    // Significant mismatch: pair up as many as possible, then merge remainders
+    const minLen = Math.min(origSentences.length, humanizedSentences.length);
+    for (let i = 0; i < minLen; i++) {
+      const original = origSentences[i];
+      const humanized = humanizedSentences[i];
+
+      if (!original.trim() && !humanized.trim()) continue;
+
+      if (original.trim() && isFragment(humanized) && results.length > 0) {
+        const prev = results[results.length - 1];
+        prev.humanized = `${prev.humanized} ${humanized}`.trim();
+        continue;
+      }
+
+      results.push({ original, humanized, index: results.length });
     }
 
-    results.push({ original, humanized, index: results.length });
+    // Merge excess originals into the last row's original
+    if (origSentences.length > minLen && results.length > 0) {
+      const excess = origSentences.slice(minLen).join(' ');
+      results[results.length - 1].original += ' ' + excess;
+    }
+
+    // Merge excess humanized into the last row's humanized
+    if (humanizedSentences.length > minLen && results.length > 0) {
+      const excess = humanizedSentences.slice(minLen).join(' ');
+      results[results.length - 1].humanized += ' ' + excess;
+    }
   }
+
   return results;
 }

@@ -221,7 +221,7 @@ function calculateQuantifierOveruse(text: string): number {
 
 function analyzeSentence(sentence: string): SentenceDetectionResult {
   const issues: string[] = [];
-  let score = 35;
+  let score = 50;
 
   const lower = sentence.toLowerCase();
 
@@ -231,11 +231,11 @@ function analyzeSentence(sentence: string): SentenceDetectionResult {
   if (isArabic) {
     // Arabic AI phrases
     AR_AI_PHRASES.forEach(phrase => {
-      if (sentence.includes(phrase)) { score -= 22; issues.push(`AI phrase: "${phrase}"`); }
+      if (sentence.includes(phrase)) { score -= 12; issues.push(`AI phrase: "${phrase}"`); }
     });
     // Arabic AI sentence starters
     AR_AI_SENTENCE_STARTERS.forEach(starter => {
-      if (sentence.startsWith(starter)) { score -= 12; issues.push('AI-like sentence opener (Arabic)'); }
+      if (sentence.startsWith(starter)) { score -= 8; issues.push('AI-like sentence opener (Arabic)'); }
     });
     // Arabic transition words
     AR_TRANSITION_WORDS.forEach(w => {
@@ -259,76 +259,85 @@ function analyzeSentence(sentence: string): SentenceDetectionResult {
   AI_PHRASES.forEach(phrase => {
     if (lower.includes(phrase)) { aiPhraseCount++; issues.push(`AI phrase: "${phrase}"`); }
   });
-  score -= aiPhraseCount * 22;
+  score -= aiPhraseCount * 12;
 
   // AI sentence starters
   AI_SENTENCE_STARTERS.forEach(starter => {
     if (lower.startsWith(starter.toLowerCase())) {
-      score -= 12;
+      score -= 8;
       issues.push(`AI-like sentence opener`);
     }
   });
 
   // Sentence length
   const wordCount = sentence.split(/\s+/).length;
-  if (wordCount > 35) { issues.push('Very long sentence'); score -= 18; }
-  if (wordCount > 25) { issues.push('Long sentence (AI tendency)'); score -= 8; }
-  if (wordCount <= 5 && wordCount >= 2) { score += 5; } // Short sentences are human-like
+  if (wordCount > 40) { issues.push('Very long sentence'); score -= 10; }
+  else if (wordCount > 30) { issues.push('Long sentence (AI tendency)'); score -= 5; }
+  if (wordCount <= 8 && wordCount >= 2) { score += 5; } // Short sentences are human-like
 
   // Formal vocabulary
-  if (/\b(utilize|implement|facilitate|leverage|foster|cultivate|empower)\b/i.test(sentence)) {
-    issues.push('Formal/AI vocabulary'); score -= 15;
+  if (/\b(utilize|facilitate|leverage|foster|cultivate|empower)\b/i.test(sentence)) {
+    issues.push('Formal/AI vocabulary'); score -= 8;
   }
 
   // Passive voice
   if (/\b(is|are|was|were|been|being)\s+\w+ed\b/i.test(sentence)) {
-    issues.push('Passive voice'); score -= 8;
+    issues.push('Passive voice'); score -= 3;
   }
 
   // Hedging
   HEDGING_PHRASES.forEach(h => {
-    if (lower.includes(h)) { issues.push('Hedging language'); score -= 10; }
+    if (lower.includes(h)) { issues.push('Hedging language'); score -= 6; }
   });
 
   // Quantifiers
   QUANTIFIERS.forEach(q => {
-    if (lower.includes(q)) { score -= 6; }
+    if (lower.includes(q)) { score -= 4; }
   });
 
   // Human indicators (positive signals) — reduced weight as these are weak signals
   let humanSignals = 0;
   HUMAN_INDICATORS.forEach(h => { if (lower.includes(h)) humanSignals++; });
-  score += humanSignals * 0.5;
+  score += humanSignals * 3;
 
   // Contractions (human signal) — length-limited to prevent ReDoS
   const contractions = sentence.match(/[a-zA-Z]{1,15}'(?:t|s|re|ve|ll|d|m)\b/gi);
-  if (contractions) score += contractions.length * 0.5;
+  if (contractions) score += contractions.length * 3;
 
   // First person (human signal)
-  if (/\b(I|me|my|we|us|our)\b/i.test(sentence)) { score += 1; }
+  if (/\b(I|me|my|we|us|our)\b/i.test(sentence)) { score += 3; }
 
   // Second person
-  if (/\byou\b/i.test(sentence)) { score += 0.5; }
+  if (/\byou\b/i.test(sentence)) { score += 2; }
 
   // Questions (human signal)
-  if (sentence.endsWith('?')) { score += 1; }
+  if (sentence.endsWith('?')) { score += 4; }
 
   // Exclamation
-  if (sentence.endsWith('!')) { score += 1; }
+  if (sentence.endsWith('!')) { score += 3; }
 
   // Em-dashes (human signal)
-  if (sentence.includes('—') || sentence.includes(' - ')) { score += 1; }
+  if (sentence.includes('—') || sentence.includes(' - ')) { score += 2; }
 
   // Parenthetical asides
-  if (sentence.includes('(') && sentence.includes(')')) { score += 1; }
+  if (sentence.includes('(') && sentence.includes(')')) { score += 3; }
 
   // Starts with conjunction
-  if (/^(and|but|so|because|also|plus|or|well|ok|hey)\b/i.test(sentence)) { score += 1; }
+  if (/^(and|but|so|because|also|plus|or|well|ok|hey)\b/i.test(sentence)) { score += 4; }
 
   // Uniform structure penalty
+  // Uniform structure penalty: only apply to sentences that are suspiciously
+  // "perfect" — exactly medium length, no contractions, no parentheticals,
+  // no dashes, no questions/exclamations. The previous condition was far too
+  // broad and penalised ALL normal sentences.
   const words = sentence.split(/\s+/);
-  if (words.length >= 10 && words.length <= 25 && words.every(w => /^[\w,.!?]+$/.test(w)) && /[.!?]$/.test(sentence)) {
-    issues.push('Uniform structure'); score -= 18;
+  if (words.length >= 12 && words.length <= 22
+    && words.every(w => /^[\w,.]+$/.test(w))
+    && /\.$/.test(sentence)
+    && !contractions?.length
+    && !/[()\[\]—]/.test(sentence)
+    && humanSignals === 0) {
+    issues.push('Uniform structure'); score -= 8;
   }
 
   score = Math.max(0, Math.min(100, score));

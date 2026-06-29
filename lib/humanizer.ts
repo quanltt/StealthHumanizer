@@ -78,7 +78,7 @@ export async function humanizeText(
   // Use corpus-calibrated thresholds if available
   const calibratedThresholds = hasStyleModel() ? getCorpusCalibratedThresholds() : null;
   const targetScore = options.targetScore || calibratedThresholds?.targetScore || 80;
-  const maxPasses = options.level === 'ninja' ? 2 : options.level === 'aggressive' ? 2 : 1;
+  const maxPasses = options.level === 'ninja' ? 3 : options.level === 'aggressive' ? 3 : 1;
 
   // Extract structural regions (code, links, URLs, mentions, blockquotes, ...)
   // before any processing. They survive the pipeline as opaque placeholders and
@@ -121,17 +121,18 @@ export async function humanizeText(
 
       try {
         const rehumanized = await rehumanizeFlaggedSentences(flagged, options, apiKey);
-        const originalSentences = splitIntoSentences(currentText);
+        // Replace flagged sentences in-place, preserving paragraph structure.
+        // The previous approach joined ALL sentences with ' ', destroying
+        // paragraph breaks. Instead, do targeted replacement in the full text.
+        let updatedText = currentText;
         let sentenceIndex = 0;
-        const newSentences = originalSentences.map(orig => {
-          if (flagged.includes(orig) && sentenceIndex < rehumanized.length) {
-            const replacement = rehumanized[sentenceIndex];
+        for (const orig of flagged) {
+          if (sentenceIndex < rehumanized.length && rehumanized[sentenceIndex].trim().length > 8) {
+            updatedText = updatedText.replace(orig, rehumanized[sentenceIndex]);
             sentenceIndex++;
-            return replacement;
           }
-          return orig;
-        });
-        currentText = postprocess(newSentences.join(' '), { light: true, aggressiveSynonyms: options.aggressiveSynonyms });
+        }
+        currentText = postprocess(updatedText, { light: true, aggressiveSynonyms: options.aggressiveSynonyms });
         passes = pass;
       } catch {
         break;

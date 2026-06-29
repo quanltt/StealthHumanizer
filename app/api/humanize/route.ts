@@ -203,9 +203,10 @@ export async function POST(request: NextRequest) {
     if (useCorpus) {
       currentText = corpusAwarePostprocess(currentText);
     }
-    // Also apply regular post-processing if toggled on
+    // Also apply regular post-processing if toggled on (ALWAYS light mode to
+    // prevent destructive transformations like reordering/randomization)
     if (enablePostprocess) {
-      currentText = postprocess(currentText, { style: style as any, synonymIntensity });
+      currentText = postprocess(currentText, { light: true, style: style as any, synonymIntensity });
     }
 
     // ==================== LAYER 3: Multi-Model Chain ====================
@@ -282,6 +283,9 @@ export async function POST(request: NextRequest) {
       originalText: humanizedText,
       candidateText: currentText,
       fallbackText: safeClean(humanizedText),
+      minLexicalOverlap: 0.35,
+      minLengthRatio: 0.6,
+      maxLengthRatio: 1.5,
     });
     const finalText = guard.text;
     const finalDetection = detectAI(finalText);

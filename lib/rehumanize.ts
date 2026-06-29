@@ -36,21 +36,31 @@ export function splitIntoSentencesStable(text: string): string[] {
 }
 
 export function parseRehumanizedLines(raw: string): string[] {
-  const jsonMatch = raw.match(/\[[\s\S]*\]/);
+  // Strip markdown code fences that some LLMs wrap JSON in
+  const cleaned = raw.replace(/^```(?:json)?\s*\n?/i, '').replace(/\n?```\s*$/i, '').trim();
+
+  // Try JSON array first
+  const jsonMatch = cleaned.match(/\[[\s\S]*\]/);
   if (jsonMatch) {
     try {
       const parsed = JSON.parse(jsonMatch[0]);
-      if (Array.isArray(parsed)) return parsed.map(String).map(s => s.trim()).filter(s => s.length > 8);
+      if (Array.isArray(parsed)) {
+        const results = parsed.map(String).map(s => s.trim()).filter(s => s.length > 8);
+        if (results.length > 0) return results;
+      }
     } catch {}
   }
 
-  return raw
+  // Fallback: numbered lines (1. sentence / 1) sentence / 1: sentence)
+  const numberedLines = cleaned
     .split('\n')
     .map(line => line
-      .replace(/^\s*(?:[-*•]|\d+[.)]|["']?sentence\s*\d+["']?\s*[:.)-])\s*/i, '')
-      .replace(/^['"]|['"]$/g, '')
+      .replace(/^\s*(?:[-*•]|\d+[.):,]|["']?sentence\s*\d+["']?\s*[:.)-])\s*/i, '')
+      .replace(/^["']|["']\s*,?$/g, '')
       .trim())
-    .filter(line => line.length > 8 && !/^here (?:are|is)\b/i.test(line));
+    .filter(line => line.length > 8 && !/^here (?:are|is)\b/i.test(line) && !/^(?:sure|okay|certainly)/i.test(line));
+
+  return numberedLines;
 }
 
 function preserveEnding(original: string, rewritten: string): string {
@@ -119,8 +129,18 @@ export function chooseImprovedRewrite(original: string, llmRewrite: string | und
   const fallback = localRehumanizeSentence(original, index);
   const originalScore = scoreSentence(original);
 
+  // Completeness check: candidate must have ending punctuation and 4+ words
+  function isComplete(text: string): boolean {
+    const t = text.trim();
+    if (!t) return false;
+    if (!/[.!?]$/.test(t)) return false;
+    if (t.split(/\s+/).filter(Boolean).length < 4) return false;
+    return true;
+  }
+
   const candidates = [llmRewrite, fallback]
     .filter((candidate): candidate is string => Boolean(candidate && candidate.trim().length > 8))
+    .filter(candidate => isComplete(candidate))
     .map(candidate => preserveEnding(original, candidate.trim()))
     .filter(candidate => normalized(candidate).toLowerCase() !== normalized(original).toLowerCase());
 

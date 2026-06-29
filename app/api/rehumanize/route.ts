@@ -9,8 +9,14 @@ import { chooseImprovedRewrite, parseRehumanizedLines, replaceSentencesInText } 
 import { checkRateLimit } from '@/lib/rate-limit';
 
 const VALID_LEVELS = ['light', 'medium', 'aggressive', 'ninja'];
-const VALID_STYLES = ['academic', 'business', 'creative', 'casual', 'technical', 'humanize'];
-const VALID_TONES = ['neutral', 'formal', 'conversational', 'engaging'];
+const VALID_STYLES = ['academic', 'business', 'creative', 'casual', 'technical', 'humanize', 'professional'];
+const VALID_TONES = [
+  'academic-formal', 'academic-casual', 'journalistic', 'creative-writing',
+  'conversational', 'professional', 'technical', 'persuasive', 'storytelling',
+  'humorous', 'emotional', 'analytical', 'custom',
+  // Legacy values for backward compatibility
+  'neutral', 'formal', 'engaging',
+];
 
 export async function POST(request: NextRequest) {
   try {

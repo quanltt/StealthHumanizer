@@ -145,5 +145,5 @@ export function localHumanizeText(text: string, options: LocalHumanizeOptions = 
   const rewritten = paragraphs
     .map((chunk, index) => /^\n+$/.test(chunk) ? chunk : rewriteParagraph(chunk, index, resolved))
     .join('');
-  return postprocess(rewritten, { style: resolved.style, light: resolved.level === 'light' });
+  return postprocess(rewritten, { style: resolved.style, light: true });
 }

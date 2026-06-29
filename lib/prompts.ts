@@ -106,44 +106,45 @@ CRITICAL: Do NOT completely change the tone, structure, or original meaning of t
 
 CRITICAL RULES — Follow these EXACTLY:
 
-1. MEANING & STRUCTURAL PRESERVATION (CRITICAL):
+1. MEANING & STRUCTURAL PRESERVATION (MOST IMPORTANT):
    - You MUST preserve ALL facts, data points, entities, arguments, and underlying concepts from the original text.
-   - DO NOT delete important sentences or oversimplify complex ideas just to sound casual.
+   - DO NOT delete sentences. Every idea in the original must appear in the output.
    - DO NOT add new information, opinions, or hallucinations that were not in the original text.
-   - The output length should be roughly similar to the original text.
+   - DO NOT produce sentence fragments, incomplete thoughts, or empty lines.
+   - The output MUST have approximately the same number of sentences and paragraphs as the input.
+   - The output length should be within ±15% of the original word count.
 
-2. NATURAL SENTENCE VARIATION:
-   - Mix up sentence lengths naturally.
+2. OUTPUT FORMAT (CRITICAL):
+   - Return ONLY the rewritten text. No explanations, no headers, no meta-commentary.
+   - Preserve paragraph breaks exactly as they appear in the input (blank lines between paragraphs).
+   - Every sentence must be a complete, grammatically correct sentence.
+   - Do NOT output bullet points, numbered lists, or markdown formatting unless the original had them.
+
+3. NATURAL SENTENCE VARIATION:
+   - Mix up sentence lengths naturally: some short (5-12 words), some medium (15-20), some longer.
    - Avoid monotonous, perfectly balanced sentences.
    - Write clearly and simply.
 
-3. WORD CHOICE:
-   - Avoid cliché AI buzzwords like: furthermore, moreover, delve into, tapestry, landscape, realm, multifaceted, robust, seamless, synergy, paradigm, innovative.
-   - Use clear, simple, and accurate language over complex jargon.
+4. WORD CHOICE:
+   - Replace cliché AI buzzwords: furthermore, moreover, delve into, tapestry, landscape, realm, multifaceted, robust, seamless, synergy, paradigm, innovative, utilize, facilitate, leverage.
+   - Use clear, simple, accurate language over complex jargon.
+   - Use natural contractions where appropriate (it's, don't, can't, won't).
    - Avoid overly formal transitions unless the context strictly requires it.
 
-4. REGISTER AND TONE PRESERVATION:
-   - Maintain the original tone and formality level of the text. 
+5. REGISTER AND TONE PRESERVATION:
+   - Maintain the original tone and formality level of the text.
    - DO NOT insert inappropriate casual slang into formal, academic, or professional text.
-   - If the text is professional, keep it professional but natural (e.g. use mild asides, avoid robotic phrases).
+   - If the text is professional, keep it professional but natural.
 
-5. HUMAN FLOW:
-   - Use contractions naturally (e.g., it's, don't, can't) where appropriate.
-   - Avoid highly repetitive starting structures (e.g., don't start every paragraph with "The" or "In addition").
-   - Ensure the flow is logical and easy to read.
+6. HUMAN FLOW:
+   - Vary sentence openings — don't start every sentence or paragraph with "The" or "This".
+   - Occasionally start a sentence with a conjunction (And, But, So) for natural flow.
+   - Use parenthetical asides sparingly for a human touch.
 
-6. GRAMMAR & COMPLETENESS (CRITICAL):
-   - Every sentence MUST be grammatically complete and stand on its own.
-   - NEVER produce a sentence fragment, a dangling clause, or an unfinished thought.
-   - NEVER insert a disconnected interjection ("Honestly?", "Right.", "Look,", "But wait,") as its own sentence — if you use one, fold it into a complete sentence.
-   - Punctuation must be correct. No stray commas, no broken punctuation, no mid-sentence em-dashes left dangling.
-   - Keep the same paragraph breaks as the original.
-
-7. POLISH & PRECISION (for a natural, well-edited result):
-   - Write polished, precise prose — the quality of a carefully edited article or report.
-   - Avoid slang, clichés, and informal "tic" phrases ("game-changer", "making waves", "a whole lot", "turned things on their head").
-   - Preserve all proper nouns, technical terms, acronyms, names, citations, and numbers exactly.
-   - Do not pad or over-explain; keep the rewrite close to the original length.
+7. COMPLETENESS CHECK (CRITICAL):
+   - Before outputting, verify: does every paragraph from the input have a corresponding paragraph in the output?
+   - Did you drop any sentences? If so, add them back in rewritten form.
+   - Is every sentence complete and grammatically correct?
 
 OUTPUT: Return ONLY the rewritten text. No explanations.`;
 
@@ -378,8 +379,12 @@ RULES FOR EACH SENTENCE (follow strictly):
 SENTENCES TO REWRITE:
 ${flaggedSentences.map((s, i) => `${i + 1}. ${s}`).join('\n')}
 
-Return ONLY a JSON array of strings, one complete rewritten sentence per input sentence, in order. No markdown, no commentary.
-Example: ["Artificial intelligence has reshaped how many businesses operate today.", "Companies that adopt these tools can often streamline routine work and respond to customers more quickly."]`;
+Return ONLY a JSON array of strings, one complete rewritten sentence per input sentence, in order. No markdown fences, no commentary, no numbering.
+If you cannot return valid JSON, return the rewritten sentences as plain text, one per line, numbered 1. 2. 3. etc.
+Example JSON: ["Artificial intelligence has reshaped how many businesses operate today.", "Companies that adopt these tools can often streamline routine work and respond to customers more quickly."]
+Example plain text fallback:
+1. Artificial intelligence has reshaped how many businesses operate today.
+2. Companies that adopt these tools can often streamline routine work and respond to customers more quickly.`;
 }
 
 // ==================== ENHANCEMENT PROMPTS ====================

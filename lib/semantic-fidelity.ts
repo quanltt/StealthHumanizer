@@ -144,7 +144,8 @@ export function assessSemanticFidelity(original: string, rewritten: string): Sem
   const warnings: string[] = [];
   if (keywordRecall < 0.55) warnings.push('Important keywords may have been dropped.');
   if (lengthRatioRaw < 0.55) warnings.push('Output length changed substantially; review for omissions or additions.');
-  if (sentenceAlignment < 0.5) warnings.push('Sentence structure changed substantially; verify meaning manually.');
+  if (sentenceAlignment < 0.6) warnings.push('Sentence structure changed substantially; verify meaning manually.');
+  if (unigramCosine < 0.5 && inputWords > 30) warnings.push('Vocabulary diverged significantly; check that core concepts are preserved.');
   if (bigramCosine < 0.15 && inputWords > 30) warnings.push('Phrase-level overlap is low; check for semantic drift.');
   if (entityRecallRaw < 0.8) warnings.push('Some named entities may have changed or disappeared.');
   if (numberRecallRaw < 1) warnings.push('A number, percentage, date, or measurement may have changed or disappeared.');
