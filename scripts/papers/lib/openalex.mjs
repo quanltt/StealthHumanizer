@@ -22,7 +22,10 @@ function mapOpenAlexWork(work) {
     : [];
 
   const source = work?.primary_location?.source;
-  const license = work?.open_access?.oa_status || work?.open_access?.license || "";
+  // Prefer an explicit license string (work.license / primary_location.license);
+  // fall back to the OA status, which is how OpenAlex often represents openness.
+  const license =
+    work?.license || work?.primary_location?.license || work?.open_access?.oa_status || "";
 
   return {
     id: work.id || "",

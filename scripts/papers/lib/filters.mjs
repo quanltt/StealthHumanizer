@@ -8,6 +8,11 @@ const DEFAULT_LICENSE_ALLOWLIST = [
   "cc-by-nc-nd",
 ];
 
+// OpenAlex exposes openness via `open_access.oa_status` (gold/green/hybrid/
+// bronze), not always as an explicit CC license string. These are legitimately
+// open-access records, so accept them when the record is flagged OA.
+const OA_STATUS_ALLOWLIST = new Set(["gold", "green", "hybrid", "bronze"]);
+
 function normalized(value) {
   return (value || "").toString().trim().toLowerCase();
 }
@@ -41,11 +46,14 @@ export function evaluateRecord(record, config) {
 
   if (requireDoi && !record.doi) failures.push("missing_doi");
 
-  if (requireJournalArticle && normalized(record.type) !== "journal-article") {
+  if (requireJournalArticle && !["journal-article", "article", "review-article"].includes(normalized(record.type))) {
     failures.push("not_journal_article");
   }
 
-  if (!record.license || !licenseAllowlist.includes(normalized(record.license))) {
+  const lic = normalized(record.license);
+  const licenseOk =
+    licenseAllowlist.includes(lic) || (record.isOpenAccess && OA_STATUS_ALLOWLIST.has(lic));
+  if (!lic || !licenseOk) {
     failures.push("license_not_allowlisted");
   }
 
