@@ -1,6 +1,11 @@
 /** @type {import('next').NextConfig} */
+// Optional sub-path deployment (e.g. self-hosted behind a reverse proxy at
+// /humanizer/). Unset -> undefined -> app served at root (public Vercel app).
+const basePath = process.env.NEXT_PUBLIC_BASE_PATH || undefined;
+
 const nextConfig = {
   reactStrictMode: true,
+  ...(basePath ? { basePath } : {}),
   async headers() {
     return [
       {

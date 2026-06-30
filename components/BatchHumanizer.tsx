@@ -5,6 +5,7 @@ import { Layers, Plus, Trash2, Zap, Copy, AlertTriangle, CheckCircle, Loader2 } 
 import { getApiKeys } from '@/lib/storage';
 import { WEB_PROVIDERS as PROVIDERS } from '@/lib/providers';
 import { ModelProvider } from '@/lib/types';
+import { BASE_PATH } from '@/lib/base-path';
 
 interface BatchItem {
   id: string;
@@ -95,7 +96,7 @@ export default function BatchHumanizer({ showToast }: BatchHumanizerProps) {
     setItemStatuses(newStatuses);
 
     try {
-      const res = await fetch('/api/humanize-batch', {
+      const res = await fetch(`${BASE_PATH}/api/humanize-batch`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -174,7 +175,7 @@ export default function BatchHumanizer({ showToast }: BatchHumanizerProps) {
     try {
       // Only retry failed items to save API credits
       const failedTexts = failedIndices.map(i => items[i].text);
-      const res = await fetch('/api/humanize-batch', {
+      const res = await fetch(`${BASE_PATH}/api/humanize-batch`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({

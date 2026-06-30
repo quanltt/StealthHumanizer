@@ -16,6 +16,7 @@ import { buildSentenceResults } from '@/lib/text-utils';
 import { WEB_PROVIDERS as PROVIDERS } from '@/lib/providers';
 import { assessSemanticFidelity } from '@/lib/semantic-fidelity';
 import { localHumanizeText } from '@/lib/local-humanizer';
+import { BASE_PATH } from '@/lib/base-path';
 import { addCostEntry } from '@/lib/cost-tracker';
 import { addObservabilityEvent, estimateRunCost } from '@/lib/observability';
 import { saveHumanizationVersion } from '@/lib/version-history';
@@ -246,7 +247,7 @@ export default function Humanizer({ showToast, onGoToSettings, isFirstVisit }: H
         Object.entries(getApiKeys()).map(([provider, key]) => [provider, key?.trim()])
       );
 
-      const response = await fetch('/api/humanize', {
+      const response = await fetch(`${BASE_PATH}/api/humanize`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -322,7 +323,7 @@ export default function Humanizer({ showToast, onGoToSettings, isFirstVisit }: H
     try {
       const { providerId, apiKey } = getApiCredentials();
       if (!apiKey) return;
-      const resp = await fetch('/api/alternative', {
+      const resp = await fetch(`${BASE_PATH}/api/alternative`, {
         method: 'POST', headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ original: sentence.original, current: sentence.humanized, style, model: providerId, apiKey }),
       });
@@ -348,7 +349,7 @@ export default function Humanizer({ showToast, onGoToSettings, isFirstVisit }: H
     try {
       const formData = new FormData();
       formData.append('file', file);
-      const resp = await fetch('/api/upload', { method: 'POST', body: formData });
+      const resp = await fetch(`${BASE_PATH}/api/upload`, { method: 'POST', body: formData });
       if (!resp.ok) { const err = await resp.json(); throw new Error(err.error || 'Upload failed'); }
       const raw = await resp.json();
       const data = raw.data ?? raw;
@@ -390,7 +391,7 @@ export default function Humanizer({ showToast, onGoToSettings, isFirstVisit }: H
         const flagged = detection.sentences.filter((s: any) => s.classification !== 'human').map((s: any) => s.text);
         if (flagged.length === 0) break;
 
-        const resp = await fetch('/api/rehumanize', {
+        const resp = await fetch(`${BASE_PATH}/api/rehumanize`, {
           method: 'POST', headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({
             flaggedSentences: flagged, style, 
@@ -461,7 +462,7 @@ export default function Humanizer({ showToast, onGoToSettings, isFirstVisit }: H
 
     setGrammarChecking(true);
     try {
-      const resp = await fetch('/api/grammar', {
+      const resp = await fetch(`${BASE_PATH}/api/grammar`, {
         method: 'POST', headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ text: result.fullText, model: providerId, apiKey }),
       });
