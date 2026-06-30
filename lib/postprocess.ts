@@ -774,14 +774,20 @@ function stripLLMPreamble(text: string): string {
     /^(here(?:'s| is)?|below(?:,| is)?|sure[,!]?|certainly[,!]?|of course[,!]?|okay[,!]?|alright[,!]?|this is|the (?:rewritten|revised|humanized|final|following)|rewritten|revised|humanized(?:\s+(?:text|version))?|result|output|answer)\b/i;
 
   // 1) Single-line preamble clause: "<opener> ... : <quoted content>".
-  //    Requiring the remainder to be wrapped in matching quotes separates model
-  //    meta-output from legitimate prose such as "Here is the issue: we need time."
+  //    Some models (e.g. gemma3) open a quote after the colon but don't close
+  //    it, so accept the clause when the remainder merely STARTS with a quote.
+  //    The opener + colon requirement keeps legitimate prose safe (e.g.
+  //    "Here is the issue: we need time." has no quote -> kept).
   const colonIdx = r.search(/[:：]/);
   if (colonIdx > 0 && colonIdx < 200) {
     const before = r.slice(0, colonIdx).trim();
     const after = r.slice(colonIdx + 1).trim();
-    if (opener.test(before) && startsQ(after) && endsQ(after)) {
-      r = unwrap(after);
+    if (opener.test(before) && after.length > 0) {
+      if (startsQ(after) && endsQ(after)) {
+        r = unwrap(after);
+      } else if (startsQ(after)) {
+        r = after.replace(new RegExp('^' + QC), '');
+      }
     }
   }
 
