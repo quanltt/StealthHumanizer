@@ -806,8 +806,18 @@ function stripLLMPreamble(text: string): string {
     .replace(/\n\s*(hope this helps.*|let me know.*|feel free to.*|happy (?:writing|humanizing|to help).*)\s*$/i, '')
     .trim();
 
-  // 4) Final unwrap in case earlier steps left the body wrapped.
-  return unwrap(r);
+  // 4) Orphan leading quote: some models open a quote and never close it,
+  //    with no preamble at all. Strip a lone opening quote when its matching
+  //    closer is absent (balanced pairs are already handled by unwrap above).
+  const stripOrphanLeadQuote = (s: string): string => {
+    if (s.startsWith('“') && !s.includes('”')) return s.slice(1).trimStart();
+    if (s.startsWith('‘') && !s.includes('’')) return s.slice(1).trimStart();
+    if (s.startsWith('"') && (s.match(/"/g) || []).length % 2 === 1) return s.slice(1).trimStart();
+    return s;
+  };
+
+  // 5) Final unwrap in case earlier steps left the body wrapped.
+  return stripOrphanLeadQuote(unwrap(r));
 }
 
 // ==================== STEALTH ENGINE (anti-detector deterministic layer) ====================
