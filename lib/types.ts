@@ -35,6 +35,11 @@ export interface Provider {
 
 export type StylePreset = 'humanize' | 'academic' | 'casual' | 'professional' | 'creative' | 'technical' | 'stealth';
 
+// Stealth intensity: how hard the deterministic anti-detector layer pushes.
+// light = minimal touch (max fidelity); ninja = full stealth + surgical rewrite
+// of the lowest-scoring sentences (max evasion, accepts more change).
+export type Intensity = 'light' | 'medium' | 'aggressive' | 'ninja';
+
 export interface ApiKeys {
   [key: string]: string | undefined;
 }

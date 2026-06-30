@@ -7,7 +7,7 @@ import {
   Type, Languages, Upload, RotateCcw, CheckCircle, AlertTriangle,
   X, FileUp, BarChart2, Shield
 } from 'lucide-react';
-import { StylePreset, HumanizationResult, ModelProvider, SentenceDetectionResult } from '@/lib/types';
+import { StylePreset, HumanizationResult, ModelProvider, SentenceDetectionResult, Intensity } from '@/lib/types';
 import { SAMPLE_AI_TEXT, SAMPLE_TECHNICAL_TEXT } from '@/lib/prompts';
 import { detectAI } from '@/lib/detector';
 import { getReadabilityLabel } from '@/lib/readability';
@@ -113,6 +113,7 @@ export default function Humanizer({ showToast, onGoToSettings, isFirstVisit }: H
   const DEFAULT_PROVIDER: ModelProvider =
     ((process.env.NEXT_PUBLIC_DEFAULT_PROVIDER as ModelProvider | undefined) || 'gemini');
   const [preferredModel, setPreferredModel] = useState<ModelProvider>(DEFAULT_PROVIDER);
+  const [intensity, setIntensity] = useState<Intensity>('medium');
 
   // Comparison chart visibility (Phase 4)
   const [showComparisonChart, setShowComparisonChart] = useState(false);
@@ -252,7 +253,7 @@ export default function Humanizer({ showToast, onGoToSettings, isFirstVisit }: H
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          text: inputText, style,
+          text: inputText, style, intensity,
           model: providerId, apiKey, targetScore, language, writingSample,
           maxOutputWords: maxOutputWords || undefined,
           postprocess: enablePostprocess,
@@ -649,6 +650,38 @@ export default function Humanizer({ showToast, onGoToSettings, isFirstVisit }: H
               ))}
             </div>
           </div>
+        </div>
+
+        {/* Intensity (stealth strength) */}
+        <div>
+          <label className="block text-sm font-medium text-dark-300 mb-2">
+            Stealth Intensity <span className="text-dark-400 font-normal">— how hard the anti-detector layer pushes</span>
+          </label>
+          <div className="flex gap-2 flex-wrap">
+            {([
+              { id: 'light', name: 'Light', icon: '🪶', desc: 'Minimal touch' },
+              { id: 'medium', name: 'Medium', icon: '⚖️', desc: 'Balanced' },
+              { id: 'aggressive', name: 'Aggressive', icon: '🔥', desc: 'Strong' },
+              { id: 'ninja', name: 'Ninja', icon: '🥷', desc: 'Max stealth' },
+            ] as { id: Intensity; name: string; icon: string; desc: string }[]).map(opt => (
+              <button key={opt.id} onClick={() => setIntensity(opt.id)}
+                title={opt.desc}
+                className={`px-3 py-2 rounded-lg text-sm font-medium transition-all flex items-center gap-1.5 ${
+                  intensity === opt.id
+                    ? opt.id === 'ninja'
+                      ? 'vibrant-gradient text-white shadow-lg shadow-fuchsia-500/30 ninja-glow'
+                      : 'vibrant-gradient text-white shadow-lg shadow-accent-500/25'
+                    : 'bg-dark-800 text-dark-300 hover:text-white hover:bg-dark-700'
+                }`}>
+                <span>{opt.icon}</span> {opt.name}
+              </button>
+            ))}
+          </div>
+          {intensity === 'ninja' && (
+            <p className="text-xs text-fuchsia-300/80 mt-2">
+              🥷 Ninja = full stealth cleaning + surgical rewrite of the most AI-like sentences. Tip: pair with the <strong>Local (gemma3)</strong> provider for best evasion — smaller models read as more human.
+            </p>
+          )}
         </div>
 
         {/* Advanced Options */}

@@ -21,7 +21,7 @@ set -uo pipefail
 export PATH="/usr/local/bin:/usr/bin:/bin:/usr/sbin:/sbin:$HOME/.local/bin:$HOME/.npm-global/bin"
 
 APP_DIR="/opt/stealthhumanizer"
-INGEST_CONFIG="$APP_DIR/data/papers/config.1m.json"
+INGEST_CONFIG="$APP_DIR/data/papers/config.verified.json"
 BENCH_CONFIG="$APP_DIR/data/papers/benchmark.q1-oa-10k.json"
 TRAIN_CONFIG="$APP_DIR/data/models/train.q1-oa-10k.json"
 MODEL="$APP_DIR/data/models/corpus-style-model.json"

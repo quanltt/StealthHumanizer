@@ -1,10 +1,11 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { ModelProvider, StylePreset } from '@/lib/types';
+import { ModelProvider, StylePreset, Intensity } from '@/lib/types';
 import { getSystemPrompt, getSelfCheckPrompt, getCorpusAwareSystemPrompt, LEVEL_PARAMS } from '@/lib/prompts';
 import { getProvider, isCliOnlyProvider } from '@/lib/providers';
 import { generateWithProvider } from '@/lib/server/providers-runtime';
 import { detectAI } from '@/lib/detector';
-import { postprocess, corpusAwarePostprocess, safeClean, stealthPostprocess } from '@/lib/postprocess';
+import { postprocess, corpusAwarePostprocess, safeClean, intensityPostprocess } from '@/lib/postprocess';
+import { localRehumanizeSentence, replaceSentencesInText } from '@/lib/rehumanize';
 import { loadStyleModelAsync, loadStyleModel, hasStyleModel } from '@/lib/style-model';
 import { calibrateWithCorpus } from '@/lib/detector';
 import { chainModels } from '@/lib/chain';
@@ -83,7 +84,14 @@ export async function POST(request: NextRequest) {
       batchTexts = [],
       freezeWords = '',
       synonymIntensity = 15,
+      intensity: requestIntensity,
     } = await request.json();
+
+    // Resolve intensity: explicit request wins; else 'stealth' style defaults to
+    // aggressive, everything else to light (preserves prior behaviour).
+    const intensity: Intensity = ['light', 'medium', 'aggressive', 'ninja'].includes(requestIntensity)
+      ? (requestIntensity as Intensity)
+      : (style === 'stealth' ? 'aggressive' : 'light');
 
     if (!text || !model || !apiKey) return NextResponse.json({ success: false, error: 'Missing required fields' }, { status: 400 });
     // Reject CLI-only runners on the primary model AND anywhere in the chain —
@@ -120,11 +128,13 @@ export async function POST(request: NextRequest) {
       if (styleModel) calibrateWithCorpus(styleModel);
     }
 
-    // Stealth mode uses higher temperature/top_p for higher perplexity (less
-    // predictable = harder to detect). Other styles keep the stable 0.5/0.90.
-    const params = style === 'stealth'
-      ? { temperature: 0.8, topP: 0.95 }
-      : { temperature: 0.5, topP: 0.90 };
+    // Higher intensity -> higher temperature for higher perplexity (less
+    // predictable = harder to detect).
+    const params = intensity === 'ninja'
+      ? { temperature: 0.85, topP: 0.97 }
+      : (intensity === 'aggressive' || style === 'stealth')
+        ? { temperature: 0.8, topP: 0.95 }
+        : { temperature: 0.5, topP: 0.90 };
     const systemPrompt = useCorpus
       ? getCorpusAwareSystemPrompt(style, writingSample, undefined, language, freezeWords)
       : getSystemPrompt(style, writingSample, language, freezeWords);
@@ -286,14 +296,27 @@ export async function POST(request: NextRequest) {
       maxLengthRatio: 1.5,
     });
     let finalText = guard.text;
-    // Stealth: apply the aggressive deterministic anti-detector layer (AI-lexicon
-    // strip + contractions + burstiness) AFTER the regression guard, so these
-    // transforms are never reverted. Multi-pass LLM re-rewriting was deliberately
-    // removed (it adds fingerprints); this is deterministic and meaning-preserving.
-    if (style === 'stealth') {
-      finalText = stealthPostprocess(finalText, { style: style as any });
+    // Intensity-driven anti-detector pass (after the guard so it is never reverted).
+    finalText = intensityPostprocess(finalText, intensity, { style: style as any });
+    let finalDetection = detectAI(finalText);
+
+    // Ninja: surgically rewrite ONLY the lowest-scoring sentences using the
+    // OFFLINE local rehumanizer (no extra LLM pass -> no added fingerprints).
+    // Targets the worst offenders; leaves already-good text untouched.
+    if (intensity === 'ninja' && finalDetection.sentences.length > 0) {
+      const worst = [...finalDetection.sentences]
+        .sort((a, b) => a.score - b.score)
+        .slice(0, 3)
+        .filter((s) => s.score < 55 && s.text && s.text.trim().length > 20);
+      const replacements = worst
+        .map((s) => ({ original: s.text, replacement: localRehumanizeSentence(s.text) }))
+        .filter((r) => r.replacement && r.replacement.trim() !== r.original.trim());
+      if (replacements.length > 0) {
+        finalText = replaceSentencesInText(finalText, replacements);
+        finalText = intensityPostprocess(finalText, 'aggressive', { style: style as any });
+        finalDetection = detectAI(finalText);
+      }
     }
-    const finalDetection = detectAI(finalText);
     const confidenceReport = buildConfidenceReport(finalDetection.score);
     const runtimeModelScore = await scoreHumanLikeness(finalText);
     const semanticFidelity = assessSemanticFidelity(text, finalText);

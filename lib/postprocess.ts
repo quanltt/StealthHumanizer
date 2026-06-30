@@ -898,7 +898,7 @@ const AI_LEXICON_WORDS: [RegExp, string][] = [
   [/\bessentially\b,?\s*/gi, ''],
 ];
 
-function stripAILexicon(text: string): string {
+export function stripAILexicon(text: string): string {
   let r = text;
   for (const [re, rep] of AI_LEXICON_PHRASES) r = r.replace(re, rep);
   for (const [re, rep] of AI_LEXICON_WORDS) r = r.replace(re, rep);
@@ -975,6 +975,36 @@ export function stealthPostprocess(text: string, options?: { style?: StylePreset
     .replace(/\n{3,}/g, '\n\n')
     .trim();
   return capitalizeSentenceStarts(r);
+}
+
+/**
+ * Intensity-driven post-process. Controls how hard the deterministic
+ * anti-detector layer pushes, independent of style (style = tone, intensity =
+ * stealth strength). Applied after the regression guard so it is never
+ * reverted. ninja's surgical sentence-rewrite happens in the route (needs the
+ * detector).
+ *   light     -> preamble/dash strip only (max fidelity, minimal change)
+ *   medium    -> + safe word-level AI-lexicon strip
+ *   aggressive-> + contractions + burstiness + length variation (full stealth)
+ *   ninja     -> aggressive (route adds surgical rewrite of low-scored sentences)
+ */
+export function intensityPostprocess(
+  text: string,
+  intensity: 'light' | 'medium' | 'aggressive' | 'ninja',
+  options?: { style?: StylePreset }
+): string {
+  let r = stripLLMPreamble(text);
+  r = stripAIDashes(r);
+  const tidy = (s: string) =>
+    capitalizeSentenceStarts(
+      s.replace(/,\s*,/g, ',').replace(/\s+,/g, ',').replace(/\s{2,}/g, ' ')
+        .replace(/\s+([,.;:!?])/g, '$1').trim()
+    );
+  if (intensity === 'light') return tidy(r);
+  r = stripAILexicon(r);
+  if (intensity === 'medium') return tidy(r);
+  // aggressive + ninja: full stealth treatment (forceContractions + burstiness).
+  return stealthPostprocess(text, { style: options?.style });
 }
 
 /**
