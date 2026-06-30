@@ -745,6 +745,66 @@ export interface PostProcessOptions {
  * Style-aware: academic/professional gets milder transformations than casual/creative.
  */
 /**
+ * Strip chatty LLM preambles/sign-offs and wrapping quotes that smaller models
+ * (e.g. local gemma3) emit despite instructions to return only the rewrite.
+ * Conservative by design: only removes a SINGLE leading intro line when it
+ * matches a known opener AND ends in a colon AND substantive text follows, and
+ * only unwraps quotes when they wrap the ENTIRE output. Normal prose is safe
+ * because a real first sentence neither starts with these openers nor ends in
+ * a trailing colon with body text on subsequent lines.
+ */
+function stripLLMPreamble(text: string): string {
+  let r = text.trim();
+  const QC = '["“”‘’`]';
+  const unwrap = (s: string) => {
+    // Same-character wrap (straight quote / backtick): open and close match.
+    let m = s.match(/^(["`])([\s\S]*?)\1$/);
+    if (m) return m[2].trim();
+    // Smart-quote pairs use distinct open/close code points.
+    m = s.match(/^(“)([\s\S]*)”$/);
+    if (m) return m[2].trim();
+    m = s.match(/^(‘)([\s\S]*)’$/);
+    if (m) return m[2].trim();
+    return s;
+  };
+  const startsQ = (s: string) => new RegExp('^' + QC).test(s);
+  const endsQ = (s: string) => new RegExp(QC + '$').test(s);
+
+  const opener =
+    /^(here(?:'s| is)?|below(?:,| is)?|sure[,!]?|certainly[,!]?|of course[,!]?|okay[,!]?|alright[,!]?|this is|the (?:rewritten|revised|humanized|final|following)|rewritten|revised|humanized(?:\s+(?:text|version))?|result|output|answer)\b/i;
+
+  // 1) Single-line preamble clause: "<opener> ... : <quoted content>".
+  //    Requiring the remainder to be wrapped in matching quotes separates model
+  //    meta-output from legitimate prose such as "Here is the issue: we need time."
+  const colonIdx = r.search(/[:：]/);
+  if (colonIdx > 0 && colonIdx < 200) {
+    const before = r.slice(0, colonIdx).trim();
+    const after = r.slice(colonIdx + 1).trim();
+    if (opener.test(before) && startsQ(after) && endsQ(after)) {
+      r = unwrap(after);
+    }
+  }
+
+  // 2) Preamble on its own line: "<opener> ...:" then content on later lines.
+  const lines = r.split(/\r?\n/);
+  if (lines.length >= 2) {
+    const first = lines[0].trim();
+    if (first.length > 0 && first.length < 120 && opener.test(first) && /[:：]\s*$/.test(first)) {
+      lines.shift();
+      r = unwrap(lines.join('\n').trim());
+    }
+  }
+
+  // 3) Trailing sign-off line.
+  r = r
+    .replace(/\n\s*(hope this helps.*|let me know.*|feel free to.*|happy (?:writing|humanizing|to help).*)\s*$/i, '')
+    .trim();
+
+  // 4) Final unwrap in case earlier steps left the body wrapped.
+  return unwrap(r);
+}
+
+/**
  * Pure cleanup that never changes meaning: strip AI em-dashes, collapse
  * whitespace, fix double punctuation, and restore sentence-start capitals.
  * Used for the rewrite-regression fallback so that when the guard reverts to
@@ -752,7 +812,8 @@ export interface PostProcessOptions {
  * without re-introducing the drift that triggered the revert.
  */
 export function safeClean(text: string): string {
-  let r = stripAIDashes(text);
+  let r = stripLLMPreamble(text);
+  r = stripAIDashes(r);
   r = r
     .replace(/,\s*,/g, ',')
     .replace(/\s+,/g, ',')
@@ -768,6 +829,9 @@ export function postprocess(text: string, options?: PostProcessOptions): string 
   const light = options?.light ?? false;
   const style = options?.style;
   let result = text;
+
+  // ALWAYS: Drop chatty LLM preambles/wrapping quotes first (smaller models).
+  result = stripLLMPreamble(result);
 
   // ALWAYS: Strip em-dashes (strongest AI tell). Numeric ranges preserved.
   result = stripAIDashes(result);
