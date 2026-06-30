@@ -773,21 +773,20 @@ function stripLLMPreamble(text: string): string {
   const opener =
     /^(here(?:'s| is)?|below(?:,| is)?|sure[,!]?|certainly[,!]?|of course[,!]?|okay[,!]?|alright[,!]?|this is|the (?:rewritten|revised|humanized|final|following)|rewritten|revised|humanized(?:\s+(?:text|version))?|result|output|answer)\b/i;
 
-  // 1) Single-line preamble clause: "<opener> ... : <quoted content>".
-  //    Some models (e.g. gemma3) open a quote after the colon but don't close
-  //    it, so accept the clause when the remainder merely STARTS with a quote.
-  //    The opener + colon requirement keeps legitimate prose safe (e.g.
-  //    "Here is the issue: we need time." has no quote -> kept).
+  // 1) Single-line preamble clause: "<opener> ... : <content>". Models phrase
+  //    this many ways (with/without quotes, open-only quotes, etc.), so key on
+  //    the SEMANTIC content of the preamble: it must start with an opener AND
+  //    contain a meta word (rewritten/version/natural/...). That keeps legit
+  //    prose like "Here is the issue: we need time." (no meta word) untouched.
+  const META = /\b(rewritten|revised|humanized|rewrite|version|natural|polished|aiming|preserving|following|simpler|clearer|readable|updated)\b/i;
   const colonIdx = r.search(/[:：]/);
   if (colonIdx > 0 && colonIdx < 200) {
     const before = r.slice(0, colonIdx).trim();
     const after = r.slice(colonIdx + 1).trim();
-    if (opener.test(before) && after.length > 0) {
-      if (startsQ(after) && endsQ(after)) {
-        r = unwrap(after);
-      } else if (startsQ(after)) {
-        r = after.replace(new RegExp('^' + QC), '');
-      }
+    if (opener.test(before) && META.test(before) && after.length > 0) {
+      if (startsQ(after) && endsQ(after)) r = unwrap(after);
+      else if (startsQ(after)) r = after.replace(new RegExp('^' + QC), '');
+      else r = after;
     }
   }
 
