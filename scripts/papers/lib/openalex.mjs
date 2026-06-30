@@ -91,7 +91,12 @@ export async function fetchOpenAlexRecords(queryConfig, fetchOptions = {}) {
     url.searchParams.set("filter", filter);
     url.searchParams.set("per-page", String(perPage));
     url.searchParams.set("page", String(page));
-    url.searchParams.set("sort", "publication_year:desc");
+    // Sort by citations, not recency. Sorting newest-first pulls 2025-2026 papers
+    // that haven't accrued citations yet, so nearly every record failed the
+    // minCitedByCount gate. Sorting by cited_by_count:desc returns the most
+    // influential papers (which easily clear the citation gate) and is the more
+    // research-grade corpus for a style model.
+    url.searchParams.set("sort", "cited_by_count:desc");
     url.searchParams.set("mailto", "admin@stealthhumanizer.com");
     requests.push(url.toString());
   }
