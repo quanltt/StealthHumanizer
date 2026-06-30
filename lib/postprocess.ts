@@ -804,6 +804,179 @@ function stripLLMPreamble(text: string): string {
   return unwrap(r);
 }
 
+// ==================== STEALTH ENGINE (anti-detector deterministic layer) ====================
+// The strongest detector signals are AI-typical vocabulary/phrases and the
+// absence of contractions + uniform sentence lengths. These maps strip the
+// AI lexicon down to plain human wording and force natural contractions.
+// Order matters: longer/more-specific phrases first, then word-level swaps.
+// Replacements are meaning-preserving; case at sentence starts is restored by
+// capitalizeSentenceStarts after every pass.
+
+const AI_LEXICON_PHRASES: [RegExp, string][] = [
+  // Filler openers / connectives -> delete entirely (meaning survives without them)
+  [/\b(?:moreover|furthermore|additionally|in addition|lastly|finally),\s*/gi, ''],
+  [/\bit is important to note that\s*,?\s*/gi, ''],
+  [/\bit is worth (?:noting|mentioning) that\s*,?\s*/gi, ''],
+  [/\bit should be (?:noted|emphasized) that\s*,?\s*/gi, ''],
+  [/\bit must be noted that\s*,?\s*/gi, ''],
+  [/\bit is (?:crucial|essential|imperative|vital) to\s+/gi, 'you must '],
+  [/\bit is (?:evident|clear|apparent) that\s*,?\s*/gi, 'clearly, '],
+  [/\bin conclusion\s*,?\s*/gi, ''],
+  [/\bin summary\s*,?\s*/gi, ''],
+  [/\bto summarize\s*,?\s*/gi, ''],
+  [/\bto conclude\s*,?\s*/gi, ''],
+  [/\bas (?:previously )?mentioned(?: earlier)?\s*,?\s*/gi, ''],
+  [/\bas (?:discussed|noted) (?:earlier|above)\s*,?\s*/gi, ''],
+  [/\bneedless to say\s*,?\s*/gi, ''],
+  [/\blast but not least\s*,?\s*/gi, ''],
+  [/\bfirst and foremost\s*,?\s*/gi, 'first, '],
+  [/\bat the end of the day\s*,?\s*/gi, ''],
+  [/\bin today'?s world\s*,?\s*/gi, ''],
+  [/\bin this day and age\s*,?\s*/gi, 'now '],
+  [/\bin the modern era\s*,?\s*/gi, 'now '],
+  [/\bin the (?:contemporary|current) landscape\s*,?\s*/gi, 'today '],
+  [/\bplays? a (?:crucial|important|pivotal|key|vital|significant) role (?:in|of)\b/gi, 'matters in'],
+  [/\bplays? a (?:crucial|important|pivotal|key|vital) role\b/gi, 'matters'],
+  [/\bhas the potential to\b/gi, 'can'],
+  [/\bdelve(?:s)? into\b/gi, 'dig into'],
+  [/\bsheds? light on\b/gi, 'shows'],
+  [/\bbrings? to the forefront\b/gi, 'highlights'],
+  [/\bembarks? on a journey\b/gi, 'starts'],
+  [/\bnavigat(?:e|es|ing) the\b/gi, 'handle the'],
+  [/\ba myriad of\b/gi, 'many'],
+  [/\ba multitude of\b/gi, 'many'],
+  [/\ba (?:wide|broad|vast) (?:range|array) of\b/gi, 'many'],
+  [/\ba significant number of\b/gi, 'many'],
+  [/\ba (?:large|small) number of\b/gi, 'many'],
+  [/\bin terms of\b/gi, 'for'],
+  [/\bwhen it comes to\b/gi, 'for'],
+  [/\bon the other hand\s*,?\s*/gi, ''],
+  [/\bas a result\s*,?\s*/gi, 'so '],
+  [/\bin order to\b/gi, 'to'],
+  [/\bdue to the fact that\b/gi, 'because'],
+  [/\bdespite the fact that\b/gi, 'although'],
+  [/\ba (?:key|crucial|vital|critical) aspect of\b/gi, 'a core part of'],
+];
+
+const AI_LEXICON_WORDS: [RegExp, string][] = [
+  [/\bleverage(?:d|s|ing)?\b/gi, 'use'],
+  [/\butilize(?:d|s|ing)?\b/gi, 'use'],
+  [/\bfacilitate(?:d|s|ing)?\b/gi, 'help'],
+  [/\bfoster(?:ed|s|ing)?\b/gi, 'build'],
+  [/\bcultivat(?:e|ed|es|ing)\b/gi, 'grow'],
+  [/\bempower(?:ed|s|ing)?\b/gi, 'enable'],
+  [/\brobust\b/gi, 'strong'],
+  [/\bcomprehensive(?:ly)?\b/gi, 'complete'],
+  [/\binnovative\b/gi, 'new'],
+  [/\bunprecedented\b/gi, 'rare'],
+  [/\bseamless(?:ly)?\b/gi, 'smooth'],
+  [/\bstreamline(?:d|s|ing)?\b/gi, 'simplify'],
+  [/\bparadigm\b/gi, 'model'],
+  [/\bsynerg(?:y|ies|istic(?:ally)?)\b/gi, 'teamwork'],
+  [/\bmultifaceted\b/gi, 'complex'],
+  [/\bholistic(?:ally)?\b/gi, 'whole'],
+  [/\bcutting-edge\b/gi, 'advanced'],
+  [/\bstate-of-the-art\b/gi, 'modern'],
+  [/\bgroundbreaking\b/gi, 'new'],
+  [/\btransformative\b/gi, 'important'],
+  [/\bshowcase(?:d|s|ing)?\b/gi, 'show'],
+  [/\bunderscore(?:d|s|ing)?\b/gi, 'highlight'],
+  [/\belucidate(?:d|s|ing)?\b/gi, 'explain'],
+  [/\bmitigat(?:e|ed|es|ing)\b/gi, 'reduce'],
+  [/\bsynthesi[sz]e(?:d|s|ing)?\b/gi, 'combine'],
+  [/\bmyriad\b/gi, 'many'],
+  [/\bnevertheless\b/gi, 'still'],
+  [/\bconsequently\b/gi, 'so'],
+  [/\bsubsequently\b/gi, 'then'],
+  [/\bthus,?\s+/gi, 'so '],
+  [/\bhence,?\s+/gi, 'so '],
+  [/\bdemonstrat(?:e|es|ed)\b/gi, 'show'],
+  [/\billustrat(?:e|es|ed)\b/gi, 'show'],
+  [/\bnotably\b,?\s*/gi, ''],
+  [/\bremarkably\b,?\s*/gi, ''],
+  [/\bsignificantly\b,?\s*/gi, ''],
+  [/\bessentially\b,?\s*/gi, ''],
+];
+
+function stripAILexicon(text: string): string {
+  let r = text;
+  for (const [re, rep] of AI_LEXICON_PHRASES) r = r.replace(re, rep);
+  for (const [re, rep] of AI_LEXICON_WORDS) r = r.replace(re, rep);
+  // Tidy up gaps left by phrase deletions (stray commas, double spaces).
+  // NOTE: do not capitalize here -- capitalizeSentenceStarts (called after)
+  // handles sentence-start casing correctly without upper-casing every word.
+  r = r
+    .replace(/,\s*,/g, ',')
+    .replace(/\s+,/g, ',')
+    .replace(/,\s*\./g, '.')
+    .replace(/\s{2,}/g, ' ')
+    .replace(/\s+([,.;:!?])/g, '$1');
+  return capitalizeSentenceStarts(r);
+}
+
+// Case-sensitive contraction pairs (capital form must be listed separately so
+// sentence-initial casing is preserved).
+const STEALTH_CONTRACTIONS: [RegExp, string][] = [
+  [/\bDo not\b/g, "Don't"], [/\bdo not\b/g, "don't"],
+  [/\bDoes not\b/g, "Doesn't"], [/\bdoes not\b/g, "doesn't"],
+  [/\bDid not\b/g, "Didn't"], [/\bdid not\b/g, "didn't"],
+  [/\bCannot\b/g, "Can't"], [/\bcannot\b/g, "can't"], [/\bcan not\b/g, "can't"],
+  [/\bWill not\b/g, "Won't"], [/\bwill not\b/g, "won't"],
+  [/\bWould not\b/g, "Wouldn't"], [/\bwould not\b/g, "wouldn't"],
+  [/\bShould not\b/g, "Shouldn't"], [/\bshould not\b/g, "shouldn't"],
+  [/\bCould not\b/g, "Couldn't"], [/\bcould not\b/g, "couldn't"],
+  [/\bIs not\b/g, "Isn't"], [/\bis not\b/g, "isn't"],
+  [/\bAre not\b/g, "Aren't"], [/\bare not\b/g, "aren't"],
+  [/\bWas not\b/g, "Wasn't"], [/\bwas not\b/g, "wasn't"],
+  [/\bWere not\b/g, "Weren't"], [/\bwere not\b/g, "weren't"],
+  [/\bHas not\b/g, "Hasn't"], [/\bhas not\b/g, "hasn't"],
+  [/\bHave not\b/g, "Haven't"], [/\bhave not\b/g, "haven't"],
+  [/\bHad not\b/g, "Hadn't"], [/\bhad not\b/g, "hadn't"],
+  [/\bIt is\b/g, "It's"], [/\bit is\b/g, "it's"],
+  [/\bThey are\b/g, "They're"], [/\bthey are\b/g, "they're"],
+  [/\bWe are\b/g, "We're"], [/\bwe are\b/g, "we're"],
+  [/\bYou are\b/g, "You're"], [/\byou are\b/g, "you're"],
+  [/\bI am\b/g, "I'm"],
+  [/\bThat is\b/g, "That's"], [/\bthat is\b/g, "that's"],
+  [/\bThere is\b/g, "There's"], [/\bthere is\b/g, "there's"],
+  [/\bWe will\b/g, "We'll"], [/\bwe will\b/g, "we'll"],
+  [/\bIt will\b/g, "It'll"], [/\bit will\b/g, "it'll"],
+  [/\bLet us\b/g, "Let's"], [/\blet us\b/g, "let's"],
+];
+
+function forceContractions(text: string): string {
+  let r = text;
+  for (const [re, rep] of STEALTH_CONTRACTIONS) r = r.replace(re, rep);
+  return r;
+}
+
+/**
+ * Stealth post-process: the deterministic anti-detector layer for the 'stealth'
+ * style. Strips the AI lexicon, forces natural contractions, and enforces
+ * burstiness/length variation -- the signals real detectors key on. Run AFTER
+ * the LLM rewrite + regression guard so these transforms are never reverted.
+ * Meaning-preserving by construction (safe word/phrase swaps + structure split).
+ */
+export function stealthPostprocess(text: string, options?: { style?: StylePreset }): string {
+  let r = stripLLMPreamble(text);
+  r = stripAIDashes(r);
+  r = stripAILexicon(r);
+  r = forceContractions(r);
+  r = injectPerplexity(r);
+  r = manipulateSentenceLengths(r);
+  r = ensureBurstiness(r);
+  r = applyRandomCollocation(r);
+  r = r
+    .replace(/,\s*,/g, ',')
+    .replace(/\s+,/g, ',')
+    .replace(/\.\s*\./g, '.')
+    .replace(/\s{2,}/g, ' ')
+    .replace(/\s+([,.;:!?])/g, '$1')
+    .replace(/\n{3,}/g, '\n\n')
+    .trim();
+  return capitalizeSentenceStarts(r);
+}
+
 /**
  * Pure cleanup that never changes meaning: strip AI em-dashes, collapse
  * whitespace, fix double punctuation, and restore sentence-start capitals.

@@ -4,7 +4,7 @@ import { getSystemPrompt, getSelfCheckPrompt, getCorpusAwareSystemPrompt, LEVEL_
 import { getProvider, isCliOnlyProvider } from '@/lib/providers';
 import { generateWithProvider } from '@/lib/server/providers-runtime';
 import { detectAI } from '@/lib/detector';
-import { postprocess, corpusAwarePostprocess, safeClean } from '@/lib/postprocess';
+import { postprocess, corpusAwarePostprocess, safeClean, stealthPostprocess } from '@/lib/postprocess';
 import { loadStyleModelAsync, loadStyleModel, hasStyleModel } from '@/lib/style-model';
 import { calibrateWithCorpus } from '@/lib/detector';
 import { chainModels } from '@/lib/chain';
@@ -120,7 +120,11 @@ export async function POST(request: NextRequest) {
       if (styleModel) calibrateWithCorpus(styleModel);
     }
 
-    const params = { temperature: 0.5, topP: 0.90 };
+    // Stealth mode uses higher temperature/top_p for higher perplexity (less
+    // predictable = harder to detect). Other styles keep the stable 0.5/0.90.
+    const params = style === 'stealth'
+      ? { temperature: 0.8, topP: 0.95 }
+      : { temperature: 0.5, topP: 0.90 };
     const systemPrompt = useCorpus
       ? getCorpusAwareSystemPrompt(style, writingSample, undefined, language, freezeWords)
       : getSystemPrompt(style, writingSample, language, freezeWords);
@@ -281,7 +285,14 @@ export async function POST(request: NextRequest) {
       minLengthRatio: 0.6,
       maxLengthRatio: 1.5,
     });
-    const finalText = guard.text;
+    let finalText = guard.text;
+    // Stealth: apply the aggressive deterministic anti-detector layer (AI-lexicon
+    // strip + contractions + burstiness) AFTER the regression guard, so these
+    // transforms are never reverted. Multi-pass LLM re-rewriting was deliberately
+    // removed (it adds fingerprints); this is deterministic and meaning-preserving.
+    if (style === 'stealth') {
+      finalText = stealthPostprocess(finalText, { style: style as any });
+    }
     const finalDetection = detectAI(finalText);
     const confidenceReport = buildConfidenceReport(finalDetection.score);
     const runtimeModelScore = await scoreHumanLikeness(finalText);

@@ -194,6 +194,17 @@ CRITICAL EXAMPLE OF DESIRED VOCABULARY AND SENTENCE STRUCTURE:
 Incorporate words like: imperative, streamline, objective, intervention, trajectory. Short, powerful paragraphs.`,
   creative: `Style: Vivid and engaging. Sensory details, fresh comparisons. Unexpected word choices. The writing should feel alive.`,
   technical: `Style: Technical but human. Precise terms, concrete examples. "You'll see" not "It can be observed." Step-by-step.`,
+  stealth: `Style: MAXIMUM STEALTH — anti-detector mode. Your single goal is to make this text read like a real human wrote it, so AI detectors score it as human. Stealth matters MORE than elegance.
+
+CRITICAL STEALTH RULES (these override everything else):
+1. BURSTINESS (most important): Deliberately mix sentence lengths. After a long sentence, write a very short one (3-7 words). Then a medium one. NEVER write three sentences in a row of similar length. Real humans write unevenly.
+2. PERPLEXITY: Prefer plain, slightly plain or unexpected word choices over the "obvious" smooth word. Real humans pick slightly off words sometimes. Do NOT write the most predictable next word.
+3. BAN these AI words entirely (never use them, ever): furthermore, moreover, additionally, in conclusion, it is important to note, it is worth noting, delve, tapestry, landscape, realm, navigate, leverage, utilize, facilitate, robust, seamless, streamline, synergy, paradigm, holistic, multifaceted, innovative, cutting-edge, state-of-the-art, transformative, comprehensive, unprecedented, foster, cultivate, empower, underscore, showcase, elucidate, mitigate, synthesize, a myriad of, in today's world, plays a crucial role, it is crucial, it is essential.
+4. CONTRACTIONS: Use them naturally (it's, don't, can't, we're, that's, won't). Text with zero contractions reads as AI.
+5. VARY SENTENCE STARTS: Do not start two sentences the same way. Occasionally start with "And", "But", "So", or a short plain word.
+6. NO em-dashes (—). Use commas, periods, or parentheses instead.
+7. HUMAN TOUCH: Add one small natural touch — a parenthetical aside, a mild conversational phrase, or a slightly personal wording — while staying appropriate to the topic.
+8. PRESERVE MEANING EXACTLY: Keep every fact, number, name, and idea. Stay within +/-15% of the original length. Never invent or drop information.`,
 };
 
 // ==================== PURPOSE-SPECIFIC OVERLAYS ====================

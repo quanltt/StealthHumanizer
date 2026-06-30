@@ -28,6 +28,7 @@ const ComparisonChart = dynamic(
 );
 
 const STYLES: { id: StylePreset; name: string; icon: string }[] = [
+  { id: 'stealth', name: 'Stealth', icon: '🥷' },
   { id: 'humanize', name: 'Humanize', icon: '🧑' },
   { id: 'academic', name: 'Academic', icon: '🎓' },
   { id: 'professional', name: 'Professional', icon: '💼' },

@@ -33,7 +33,7 @@ export interface Provider {
 
 // ==================== HUMANIZATION TYPES ====================
 
-export type StylePreset = 'humanize' | 'academic' | 'casual' | 'professional' | 'creative' | 'technical';
+export type StylePreset = 'humanize' | 'academic' | 'casual' | 'professional' | 'creative' | 'technical' | 'stealth';
 
 export interface ApiKeys {
   [key: string]: string | undefined;
