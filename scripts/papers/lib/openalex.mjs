@@ -81,6 +81,7 @@ export async function fetchOpenAlexRecords(queryConfig, fetchOptions = {}) {
     url.searchParams.set("per-page", String(perPage));
     url.searchParams.set("page", String(page));
     url.searchParams.set("sort", "publication_year:desc");
+    url.searchParams.set("mailto", "admin@stealthhumanizer.com");
     requests.push(url.toString());
   }
 

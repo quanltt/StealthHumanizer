@@ -16,8 +16,8 @@ interface RewriteRule {
 const PHRASE_RULES: RewriteRule[] = [
   { pattern: /\bit is important to note that\b/gi, replacements: ['notably', 'it is worth noting', 'the key point is'] },
   { pattern: /\bin conclusion,?\b/gi, replacements: ['to wrap this up,', 'overall,', 'in the end,'] },
-  { pattern: /\bfurthermore,?\b/gi, replacements: ['also,', 'along with that,'] },
-  { pattern: /\bmoreover,?\b/gi, replacements: ['additionally,', 'along with that,', 'also,'] },
+  { pattern: /\bfurthermore,?\b/gi, replacements: ['also,', 'just as important,', 'beyond that,'] },
+  { pattern: /\bmoreover,?\b/gi, replacements: ['plus,', 'along with that,', 'also,'] },
   { pattern: /\btherefore\b/gi, replacements: ['so', 'as a result', 'that is why'] },
   { pattern: /\bhowever\b/gi, replacements: ['but', 'still', 'even so'] },
   { pattern: /\butilize\b/gi, replacements: ['use'] },
@@ -34,6 +34,20 @@ const PHRASE_RULES: RewriteRule[] = [
   { pattern: /\boptimize\b/gi, replacements: ['improve', 'tune', 'make more efficient'] },
   { pattern: /\binnovative\b/gi, replacements: ['new', 'practical', 'fresh'] },
   { pattern: /\bcutting-edge\b/gi, replacements: ['newer', 'modern', 'current'] },
+  { pattern: /\bpivotal\b/gi, replacements: ['key', 'central', 'major'] },
+  { pattern: /\bintricate\b/gi, replacements: ['complex', 'detailed', 'involved'] },
+  { pattern: /\bmultifaceted\b/gi, replacements: ['complex', 'varied', 'multi-part'] },
+  { pattern: /\bsynergy\b/gi, replacements: ['teamwork', 'combined effort', 'collaboration'] },
+  { pattern: /\bparadigm shift\b/gi, replacements: ['major change', 'new approach', 'shift in thinking'] },
+  { pattern: /\bultimately\b/gi, replacements: ['in the end', 'finally', 'basically'] },
+  { pattern: /\bfundamentally\b/gi, replacements: ['basically', 'at its core', 'essentially'] },
+  { pattern: /\bunprecedented\b/gi, replacements: ['new', 'never seen before', 'unique'] },
+  { pattern: /\btransformative\b/gi, replacements: ['major', 'game-changing', 'impactful'] },
+  { pattern: /\bindispensable\b/gi, replacements: ['vital', 'necessary', 'crucial'] },
+  { pattern: /\belucidate\b/gi, replacements: ['explain', 'clarify', 'show'] },
+  { pattern: /\bunderscore\b/gi, replacements: ['highlight', 'stress', 'show'] },
+  { pattern: /\bmeticulous\b/gi, replacements: ['careful', 'detailed', 'thorough'] },
+  { pattern: /\bcognizant\b/gi, replacements: ['aware', 'mindful', 'knowing'] }
 ];
 
 function hashText(input: string): number {
