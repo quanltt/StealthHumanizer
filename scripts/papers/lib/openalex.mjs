@@ -50,10 +50,19 @@ function mapOpenAlexWork(work) {
 
 function buildFilterQuery(queryConfig) {
   const filters = [];
+  const q = (queryConfig.query || "").trim();
+  // Put the search term inside `filter` as default.search. Using the top-level
+  // `search=` param together with `filter=` makes OpenAlex switch to a
+  // fulltext search that returns 0 results; default.search keeps metadata
+  // (title/abstract) search and composes correctly with the other clauses.
+  if (q) filters.push(`default.search:${q}`);
   if (queryConfig.fromYear) filters.push(`from_publication_date:${queryConfig.fromYear}-01-01`);
   if (queryConfig.toYear) filters.push(`to_publication_date:${queryConfig.toYear}-12-31`);
   if (queryConfig.openAccessOnly !== false) filters.push("is_oa:true");
-  filters.push("type:journal-article");
+  // `journal-article` is not a real OpenAlex type value and silently yields 0
+  // results. The correct value is `article`; journal-article focus is enforced
+  // downstream by the quality gates (DOI, source type, etc.).
+  filters.push("type:article");
   if (queryConfig.hasAbstractOnly !== false) filters.push("has_abstract:true");
   return filters.join(",");
 }
@@ -71,12 +80,11 @@ export async function fetchOpenAlexRecords(queryConfig, fetchOptions = {}) {
   const pages = Math.max(queryConfig.pages || 1, 1);
   const timeoutMs = fetchOptions.timeoutMs ?? 25_000;
   const records = [];
-  const requests = [];
 
   const filter = buildFilterQuery(queryConfig);
+  const requests = [];
   for (let page = 1; page <= pages; page++) {
     const url = new URL(OPENALEX_BASE_URL);
-    url.searchParams.set("search", queryConfig.query || "");
     url.searchParams.set("filter", filter);
     url.searchParams.set("per-page", String(perPage));
     url.searchParams.set("page", String(page));
@@ -86,22 +94,34 @@ export async function fetchOpenAlexRecords(queryConfig, fetchOptions = {}) {
   }
 
   for (const requestUrl of requests) {
-    const controller = new AbortController();
-    const timer = setTimeout(() => controller.abort(), timeoutMs);
-    try {
-      const res = await fetch(requestUrl, {
-        method: "GET",
-        headers: { Accept: "application/json" },
-        signal: controller.signal,
-      });
-      if (!res.ok) {
-        throw new Error(`OpenAlex request failed (${res.status}) for ${requestUrl}`);
+    // OpenAlex's free/polite pool caps around 1000 credits/day. On HTTP 429 we
+    // honour Retry-After and back off so a long multi-day ingest degrades
+    // gracefully instead of crashing or silently collecting empty pages.
+    for (let attempt = 0; attempt < 4; attempt++) {
+      const controller = new AbortController();
+      const timer = setTimeout(() => controller.abort(), timeoutMs);
+      try {
+        const res = await fetch(requestUrl, {
+          method: "GET",
+          headers: { Accept: "application/json" },
+          signal: controller.signal,
+        });
+        if (res.status === 429) {
+          const retryAfter = Number(res.headers.get("retry-after")) || 30 * (attempt + 1);
+          clearTimeout(timer);
+          await new Promise((r) => setTimeout(r, Math.min(retryAfter, 120) * 1000));
+          continue;
+        }
+        if (!res.ok) {
+          throw new Error(`OpenAlex request failed (${res.status}) for ${requestUrl}`);
+        }
+        const payload = await res.json();
+        const mapped = Array.isArray(payload.results) ? payload.results.map(mapOpenAlexWork) : [];
+        records.push(...mapped);
+        break;
+      } finally {
+        clearTimeout(timer);
       }
-      const payload = await res.json();
-      const mapped = Array.isArray(payload.results) ? payload.results.map(mapOpenAlexWork) : [];
-      records.push(...mapped);
-    } finally {
-      clearTimeout(timer);
     }
   }
 
