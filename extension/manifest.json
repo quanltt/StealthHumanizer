@@ -3,7 +3,7 @@
   "name": "StealthHumanizer",
   "version": "1.0.0",
   "description": "Humanize AI text on any webpage. Select text, right-click, and transform it into natural human-like writing.",
-  "permissions": ["contextMenus", "storage", "activeTab"],
+  "permissions": ["contextMenus", "storage"],
   "background": { "service_worker": "background.js" },
   "action": { "default_popup": "popup.html", "default_title": "StealthHumanizer" },
   "icons": {

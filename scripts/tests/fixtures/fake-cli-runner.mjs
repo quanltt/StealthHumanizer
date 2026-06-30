@@ -1,4 +1,4 @@
-#!/usr/bin/env node
+#!/data/data/com.termux/files/usr/bin/env node
 // Fake Claude Code / Codex binary used by cli.test.mjs to exercise the
 // subprocess provider path without requiring the real CLIs to be installed.
 //
