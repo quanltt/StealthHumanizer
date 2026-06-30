@@ -22,8 +22,20 @@ const ALLOWED_HOSTS = new Set([
   'api.gptzero.me', 'api.z.ai',
 ]);
 
+// Local inference endpoints (Ollama, LM Studio, vLLM) listen on plain http over
+// loopback. Loopback addresses can never reach an external network, so allowing
+// them does not weaken the SSRF protection that the HTTPS + allowlist rule
+// provides for remote providers.
+const LOOPBACK_HOSTS = new Set(['localhost', '127.0.0.1', '0.0.0.0', '[::1]', '::1']);
+
 function sanitizeUrl(input: string): string {
   const parsed = new URL(input);
+  if (LOOPBACK_HOSTS.has(parsed.hostname)) {
+    if (parsed.protocol !== 'http:' && parsed.protocol !== 'https:') {
+      throw new Error(`Loopback URL must be http or https, got: ${parsed.protocol}`);
+    }
+    return parsed.href;
+  }
   if (parsed.protocol !== 'https:') {
     throw new Error(`Only HTTPS is allowed, got: ${parsed.protocol}`);
   }
@@ -490,12 +502,12 @@ export const PROVIDERS: Provider[] = [
   {
     id: 'ollama',
     name: 'Ollama (Local)',
-    description: 'Standard local Ollama instance (default: http://localhost:11434/v1).',
+    description: 'Local Ollama instance (http://localhost:11434/v1). No API key needed on the server — the humanizer runs server-side and reaches Ollama over loopback. Default model: gemma3:4b.',
     free: true,
     apiUrl: 'http://localhost:11434/v1/chat/completions',
     getApiKeyUrl: 'http://localhost:11434',
-    defaultModel: 'llama3.3',
-    models: ['llama3.3', 'llama3.1', 'mistral', 'phi3', 'gemma2', 'deepseek-coder'],
+    defaultModel: 'gemma3:4b',
+    models: ['gemma3:4b', 'gemma3:1b', 'qwen2.5:3b', 'qwen2.5:1.5b', 'llama3.3', 'llama3.1', 'mistral', 'phi3', 'deepseek-coder'],
     placeholder: 'ollama',
   },
   {

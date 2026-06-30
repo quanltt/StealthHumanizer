@@ -105,7 +105,12 @@ export default function Humanizer({ showToast, onGoToSettings, isFirstVisit }: H
   const [enableChain, setEnableChain] = useState(false);
   const [selectedChainModels, setSelectedChainModels] = useState<string[]>([]);
   const [pipelineStep, setPipelineStep] = useState('');
-  const [preferredModel, setPreferredModel] = useState<ModelProvider>('gemini');
+  // Self-hosted deployments (e.g. VPS with local Ollama) can pin a default
+  // provider via NEXT_PUBLIC_DEFAULT_PROVIDER so the app is zero-config there.
+  // Unset → 'gemini', preserving the public hosted-app behaviour unchanged.
+  const DEFAULT_PROVIDER: ModelProvider =
+    ((process.env.NEXT_PUBLIC_DEFAULT_PROVIDER as ModelProvider | undefined) || 'gemini');
+  const [preferredModel, setPreferredModel] = useState<ModelProvider>(DEFAULT_PROVIDER);
 
   // Comparison chart visibility (Phase 4)
   const [showComparisonChart, setShowComparisonChart] = useState(false);
@@ -146,12 +151,28 @@ export default function Humanizer({ showToast, onGoToSettings, isFirstVisit }: H
     return () => window.removeEventListener('keydown', handler);
   }, [inputText, result]);
 
+  // Local inference providers (Ollama, LM Studio, vLLM) need no API key — they
+  // run on the server's loopback — so they can be selected and used even before
+  // the user has entered any key. This makes a self-hosted deployment zero-config.
   const getApiCredentials = () => {
     const keys = Object.fromEntries(
       Object.entries(getApiKeys()).map(([provider, key]) => [provider, key?.trim()])
     ) as Record<string, string | undefined>;
-    const providerId = (keys[preferredModel] ? preferredModel : Object.keys(keys).find(k => keys[k]?.trim()) || 'gemini') as ModelProvider;
-    const apiKey = keys[providerId];
+    const localProviders: ModelProvider[] = ['ollama', 'lm-studio', 'vllm'];
+    const hasKey = (id: string) => !!keys[id]?.trim();
+    let providerId: ModelProvider;
+    if (hasKey(preferredModel)) {
+      providerId = preferredModel;
+    } else if (localProviders.includes(preferredModel)) {
+      providerId = preferredModel;
+    } else {
+      providerId = (Object.keys(keys).find(k => hasKey(k)) || DEFAULT_PROVIDER) as ModelProvider;
+    }
+    const apiKey =
+      keys[providerId]?.trim() ||
+      (localProviders.includes(providerId)
+        ? (PROVIDERS.find(p => p.id === providerId)?.placeholder || 'ollama')
+        : undefined);
     return { providerId, apiKey };
   };
 
