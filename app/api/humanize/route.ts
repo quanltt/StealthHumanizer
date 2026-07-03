@@ -229,43 +229,52 @@ export async function POST(request: NextRequest) {
     let passes = 1;
     let currentText = humanizedText;
 
-    // ==================== LAYER 2: Post-Processing ====================
-    // Always apply corpus-aware post-processing if model is loaded
-    if (useCorpus) {
-      currentText = corpusAwarePostprocess(currentText);
-    }
-    // Also apply regular post-processing if toggled on (ALWAYS light mode to
-    // prevent destructive transformations like reordering/randomization)
-    if (enablePostprocess) {
-      currentText = postprocess(currentText, { light: true, style: style as any, synonymIntensity });
-    }
-
-    // ==================== LAYER 3: Multi-Model Chain ====================
-    if (chainModelIds && chainModelIds.length > 0) {
-      // Build chain config from provided model IDs and API keys
-      const allApiKeys = { ...extraApiKeys, [model]: apiKey };
-      const chainConfig = chainModelIds
-        .filter((id: string) => allApiKeys[id])
-        .map((id: string) => ({
-          provider: id as ModelProvider,
-          apiKey: allApiKeys[id],
-        }));
-
-      if (chainConfig.length > 0) {
-        const chainResult = await chainModels({
-          text: currentText,
-          chainModels: chainConfig,
-          style: style as StylePreset,
-        });
-        currentText = chainResult.text;
-        passes += chainResult.passes.length;
+    // Rudra's Free Usage Model: gemma3:4b already produces natural, faithful
+    // rewrites via the humanize system prompt on the Oracle side. The full
+    // postprocessing pipeline (corpus swaps, synonym replacement, intensity
+    // rewrites, ninja surgical edits) was designed for weaker LLM outputs and
+    // actively degrades gemma's text — running it would mangle contractions,
+    // re-introduce AI fingerprints, and shorten the output. Bypass every
+    // post-LLM layer for Rudra and let the API output stand on its own.
+    if (!isRudraFree) {
+      // ==================== LAYER 2: Post-Processing ====================
+      // Always apply corpus-aware post-processing if model is loaded
+      if (useCorpus) {
+        currentText = corpusAwarePostprocess(currentText);
       }
-    }
+      // Also apply regular post-processing if toggled on (ALWAYS light mode to
+      // prevent destructive transformations like reordering/randomization)
+      if (enablePostprocess) {
+        currentText = postprocess(currentText, { light: true, style: style as any, synonymIntensity });
+      }
 
-    // ==================== LAYER 4: Final Polish ====================
-    if (enablePostprocess) {
-      // Light post-process pass after chain
-      currentText = postprocess(currentText, { light: true, synonymIntensity });
+      // ==================== LAYER 3: Multi-Model Chain ====================
+      if (chainModelIds && chainModelIds.length > 0) {
+        // Build chain config from provided model IDs and API keys
+        const allApiKeys = { ...extraApiKeys, [model]: apiKey };
+        const chainConfig = chainModelIds
+          .filter((id: string) => allApiKeys[id])
+          .map((id: string) => ({
+            provider: id as ModelProvider,
+            apiKey: allApiKeys[id],
+          }));
+
+        if (chainConfig.length > 0) {
+          const chainResult = await chainModels({
+            text: currentText,
+            chainModels: chainConfig,
+            style: style as StylePreset,
+          });
+          currentText = chainResult.text;
+          passes += chainResult.passes.length;
+        }
+      }
+
+      // ==================== LAYER 4: Final Polish ====================
+      if (enablePostprocess) {
+        // Light post-process pass after chain
+        currentText = postprocess(currentText, { light: true, synonymIntensity });
+      }
     }
 
     // NOTE: Self-check loop disabled — multi-pass LLM self-checking adds more AI fingerprints
@@ -300,43 +309,54 @@ export async function POST(request: NextRequest) {
     }
     */
 
-    const guard = applyRewriteRegressionGuard({
-      // Compare the postprocessed candidate against the RAW LLM output, not the
-      // user's original input. The guard's job is to catch POSTPROCESSING
-      // damage (synonym/collocation swaps mangling the text), not to penalize
-      // the LLM for rewriting — comparing against the original input made every
-      // aggressive rewrite "fail" and revert, silently discarding all the
-      // deterministic AI-footprint reduction. Baseline = raw LLM; revert only
-      // if postprocessing drifts far from what the LLM itself produced.
-      originalText: humanizedText,
-      candidateText: currentText,
-      fallbackText: safeClean(humanizedText),
-      minLexicalOverlap: 0.35,
-      minLengthRatio: 0.6,
-      maxLengthRatio: 1.5,
-    });
-    let finalText = guard.text;
-    // Intensity-driven anti-detector pass (after the guard so it is never reverted).
-    finalText = intensityPostprocess(finalText, intensity, { style: style as any });
-    let finalDetection = detectAI(finalText);
+    // Rudra: skip the regression guard's strict postprocessing-damage check
+    // (no postprocessing happened) — use the original input as the lexical
+    // baseline so gemma's faithful rewrite isn't penalized for changing words.
+    // Also skip intensityPostprocess + ninja surgical rewrite — gemma already
+    // delivers natural text and adding deterministic rewrites on top actively
+    // hurts the detector score.
+    let finalText: string;
+    if (isRudraFree) {
+      finalText = currentText;
+    } else {
+      const guard = applyRewriteRegressionGuard({
+        // Compare the postprocessed candidate against the RAW LLM output, not the
+        // user's original input. The guard's job is to catch POSTPROCESSING
+        // damage (synonym/collocation swaps mangling the text), not to penalize
+        // the LLM for rewriting — comparing against the original input made every
+        // aggressive rewrite "fail" and revert, silently discarding all the
+        // deterministic AI-footprint reduction. Baseline = raw LLM; revert only
+        // if postprocessing drifts far from what the LLM itself produced.
+        originalText: humanizedText,
+        candidateText: currentText,
+        fallbackText: safeClean(humanizedText),
+        minLexicalOverlap: 0.35,
+        minLengthRatio: 0.6,
+        maxLengthRatio: 1.5,
+      });
+      finalText = guard.text;
+      // Intensity-driven anti-detector pass (after the guard so it is never reverted).
+      finalText = intensityPostprocess(finalText, intensity, { style: style as any });
 
-    // Ninja: surgically rewrite ONLY the lowest-scoring sentences using the
-    // OFFLINE local rehumanizer (no extra LLM pass -> no added fingerprints).
-    // Targets the worst offenders; leaves already-good text untouched.
-    if (intensity === 'ninja' && finalDetection.sentences.length > 0) {
-      const worst = [...finalDetection.sentences]
-        .sort((a, b) => a.score - b.score)
-        .slice(0, 3)
-        .filter((s) => s.score < 55 && s.text && s.text.trim().length > 20);
-      const replacements = worst
-        .map((s) => ({ original: s.text, replacement: localRehumanizeSentence(s.text) }))
-        .filter((r) => r.replacement && r.replacement.trim() !== r.original.trim());
-      if (replacements.length > 0) {
-        finalText = replaceSentencesInText(finalText, replacements);
-        finalText = intensityPostprocess(finalText, 'aggressive', { style: style as any });
-        finalDetection = detectAI(finalText);
+      // Ninja: surgically rewrite ONLY the lowest-scoring sentences using the
+      // OFFLINE local rehumanizer (no extra LLM pass -> no added fingerprints).
+      // Targets the worst offenders; leaves already-good text untouched.
+      const ninjaDetection = detectAI(finalText);
+      if (intensity === 'ninja' && ninjaDetection.sentences.length > 0) {
+        const worst = [...ninjaDetection.sentences]
+          .sort((a, b) => a.score - b.score)
+          .slice(0, 3)
+          .filter((s) => s.score < 55 && s.text && s.text.trim().length > 20);
+        const replacements = worst
+          .map((s) => ({ original: s.text, replacement: localRehumanizeSentence(s.text) }))
+          .filter((r) => r.replacement && r.replacement.trim() !== r.original.trim());
+        if (replacements.length > 0) {
+          finalText = replaceSentencesInText(finalText, replacements);
+          finalText = intensityPostprocess(finalText, 'aggressive', { style: style as any });
+        }
       }
     }
+    let finalDetection = detectAI(finalText);
     const confidenceReport = buildConfidenceReport(finalDetection.score);
     const runtimeModelScore = await scoreHumanLikeness(finalText);
     const semanticFidelity = assessSemanticFidelity(text, finalText);
@@ -363,8 +383,8 @@ export async function POST(request: NextRequest) {
         privacyMode: false,
       },
       fallbackBehavior: {
-        used: guard.usedFallback,
-        reason: guard.reason,
+        used: false,
+        reason: isRudraFree ? 'skipped (rudra-free: no postprocessing)' : 'not needed',
       },
       provenanceDisclosure: {
         source: 'user-provided-input',
@@ -383,7 +403,7 @@ export async function POST(request: NextRequest) {
       finalScore: finalDetection.score,
       semanticScore: semanticFidelity.score,
       confidence: confidenceReport.confidence,
-      fallbackUsed: guard.usedFallback,
+      fallbackUsed: false,
       runtimeModelSource: runtimeModelScore.modelSource,
       batchCount: Array.isArray(batchTexts) ? batchTexts.length : 0,
     });

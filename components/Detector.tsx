@@ -1,44 +1,118 @@
 'use client';
 
 import { useState } from 'react';
-import { Search, CheckCircle, HelpCircle, BarChart3, Zap, BookOpen } from 'lucide-react';
+import { Search, CheckCircle, HelpCircle, BarChart3, Zap, BookOpen, Shield } from 'lucide-react';
 import { detectAI, getClassificationColor, getScoreColor, getScoreBarColor } from '@/lib/detector';
 import { getReadabilityLabel, getGradeLevelDescription } from '@/lib/readability';
 import { SAMPLE_AI_TEXT } from '@/lib/prompts';
 import { countWords } from '@/lib/storage';
+import { BASE_PATH } from '@/lib/base-path';
 
 interface DetectorProps {
   showToast: (type: 'success' | 'error' | 'info' | 'warning', message: string) => void;
 }
 
+interface RudraResult {
+  label: 'human' | 'ai';
+  aiProbability: number;
+  humanProbability: number;
+  model: string;
+  elapsedMs: number;
+  source: string;
+  verdict?: string;
+}
+
 export default function Detector({ showToast }: DetectorProps) {
   const [text, setText] = useState('');
-  const [result, setResult] = useState<ReturnType<typeof detectAI> | null>(null);
+  // Heuristic analysis (local, supplementary)
+  const [heuristic, setHeuristic] = useState<ReturnType<typeof detectAI> | null>(null);
+  // Real ML detector result (Rudra API → hosted RoBERTa)
+  const [ml, setMl] = useState<RudraResult | null>(null);
   const [loading, setLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
 
-  const handleDetect = () => {
+  const handleDetect = async () => {
     if (!text.trim()) { showToast('warning', 'Enter text to analyze.'); return; }
     setLoading(true);
+    setError(null);
+    setMl(null);
+    setHeuristic(null);
+
+    // Fire the real ML detector first (the user-visible primary verdict).
+    try {
+      const r = await fetch(`${BASE_PATH}/api/detect`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ text }),
+      });
+      if (!r.ok) throw new Error(`HTTP ${r.status}`);
+      const json = await r.json();
+      if (!json?.success) throw new Error(json?.error || 'Detection failed');
+      const d = json.data;
+      if (d?.source === 'rudra' && typeof d.aiProbability === 'number') {
+        setMl({
+          label: d.verdict === 'generated' || d.aiProbability >= 0.5 ? 'ai' : 'human',
+          aiProbability: d.aiProbability,
+          humanProbability: typeof d.humanProbability === 'number' ? d.humanProbability : 1 - d.aiProbability,
+          model: d.model || 'roberta-ai-detector',
+          elapsedMs: d.elapsedMs || 0,
+          source: 'rudra',
+          verdict: d.verdict,
+        });
+      } else if (typeof d?.score === 'number') {
+        // GPTZero or local-fallback shape from the server.
+        setMl({
+          label: d.score >= 0.5 ? 'ai' : 'human',
+          aiProbability: d.score,
+          humanProbability: 1 - d.score,
+          model: d.source === 'gptzero' ? 'GPTZero' : 'local heuristic (server-side)',
+          elapsedMs: 0,
+          source: d.source || 'fallback',
+          verdict: d.verdict,
+        });
+        if (d.source !== 'gptzero') {
+          setError('Hosted RoBERTa detector unavailable — showing server-side fallback.');
+        }
+      }
+    } catch (err: any) {
+      setError(err?.message || 'Detection request failed');
+    }
+
+    // Run the local heuristic in parallel — useful as supplementary metrics
+    // (perplexity, burstiness, readability) even after the ML verdict is in.
     setTimeout(() => {
-      const d = detectAI(text);
-      setResult(d);
+      try {
+        const d = detectAI(text);
+        setHeuristic(d);
+      } catch {}
       setLoading(false);
-      showToast('info', `Analysis: ${d.score}% human | Flesch: ${d.readability.fleschReadingEase}`);
-    }, 300);
+      showToast('info', ml ? `ML verdict: ${ml.label === 'human' ? 'Likely Human' : 'Likely AI'}` : 'Analysis complete');
+    }, 200);
   };
 
-  const scoreColor = result ? getScoreColor(result.score) : 'text-dark-400';
-  const readLabel = result ? getReadabilityLabel(result.readability.fleschReadingEase) : null;
-  const verdictIcon = result?.overallVerdict === 'human' ? CheckCircle : result?.overallVerdict === 'ai' ? HelpCircle : CheckCircle;
+  // ML verdict drives the headline score; heuristic drives the secondary metrics.
+  const headlineScore = ml ? Math.round(ml.humanProbability * 100) : (heuristic ? heuristic.score : 0);
+  const scoreColor = ml
+    ? (ml.label === 'human' ? 'text-green-400' : 'text-red-400')
+    : (heuristic ? getScoreColor(heuristic.score) : 'text-dark-400');
+  const verdictLabel = ml
+    ? (ml.label === 'human' ? 'Likely Human (ML verdict)' : 'Likely AI (ML verdict)')
+    : (heuristic ? (heuristic.overallVerdict === 'human' ? 'Likely Human Patterns' : heuristic.overallVerdict === 'ai' ? 'Likely AI Patterns' : 'Mixed — Uncertain') : '');
+  const verdictIcon = ml
+    ? (ml.label === 'human' ? CheckCircle : HelpCircle)
+    : (heuristic?.overallVerdict === 'human' ? CheckCircle : heuristic?.overallVerdict === 'ai' ? HelpCircle : CheckCircle);
+  const readLabel = heuristic ? getReadabilityLabel(heuristic.readability.fleschReadingEase) : null;
 
   return (
     <div className="space-y-6 animate-fade-in">
       <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
         <div>
           <h2 className="text-2xl font-bold text-white flex items-center gap-2">
-            <Search className="w-6 h-6 text-accent-400" /> Pattern Analysis
+            <Search className="w-6 h-6 text-accent-400" /> AI Detector
           </h2>
-          <p className="text-dark-400 mt-1">Local heuristic analysis — perplexity, burstiness, patterns, readability</p>
+          <p className="text-dark-400 mt-1">
+            Real ML detection via hosted RoBERTa + supplementary heuristic metrics (perplexity, burstiness, readability)
+          </p>
         </div>
         <button onClick={() => { setText(SAMPLE_AI_TEXT); showToast('info', 'Sample loaded!'); }}
           className="flex items-center gap-2 px-4 py-2 rounded-lg bg-dark-800 hover:bg-dark-700 text-dark-300 text-sm self-start">
@@ -49,7 +123,7 @@ export default function Detector({ showToast }: DetectorProps) {
       <div>
         <div className="flex items-center justify-between mb-2">
           <label className="text-sm font-medium text-dark-300">Text to Analyze</label>
-          {text && <button onClick={() => { setText(''); setResult(null); }} className="text-xs text-dark-500 hover:text-dark-300">Clear</button>}
+          {text && <button onClick={() => { setText(''); setHeuristic(null); setMl(null); setError(null); }} className="text-xs text-dark-500 hover:text-dark-300">Clear</button>}
         </div>
         <textarea value={text} onChange={e => setText(e.target.value)}
           placeholder="Paste text here to check if it's AI-generated..."
@@ -58,58 +132,94 @@ export default function Detector({ showToast }: DetectorProps) {
           <span className="text-xs text-dark-500">{countWords(text)} words</span>
           <button onClick={handleDetect} disabled={loading || !text.trim()}
             className="flex items-center gap-2 px-6 py-3 rounded-xl bg-gradient-to-r from-accent-500 to-accent-600 text-white font-medium shadow-lg shadow-accent-500/25 disabled:opacity-50">
-            {loading ? <><Zap className="w-5 h-5 animate-pulse" /> Analyzing...</> : <><Search className="w-5 h-5" /> Deep Scan</>}
+            {loading ? <><Zap className="w-5 h-5 animate-pulse" /> Running ML detector...</> : <><Search className="w-5 h-5" /> Analyze</>}
           </button>
         </div>
       </div>
 
-      {result && (
-        <div className="space-y-6 animate-slide-up">
-          {/* Score */}
-          <div className="bg-dark-800/50 border border-dark-700/50 rounded-xl p-6">
-            <div className="text-center mb-4">
-              <div className={`text-6xl font-bold ${scoreColor} mb-2`}>{result.score}%</div>
-              <div className="flex items-center justify-center gap-2">
-                {(() => { const Icon = verdictIcon; return <Icon className={`w-5 h-5 ${scoreColor}`} />; })()}
-                <span className={`text-lg font-medium ${scoreColor}`}>
-                  {result.overallVerdict === 'human' ? 'Likely Human Patterns' : result.overallVerdict === 'ai' ? 'Likely AI Patterns' : 'Mixed — Uncertain'}
-                </span>
-              </div>
-            </div>
-            <div className="h-3 bg-dark-700 rounded-full overflow-hidden">
-              <div className={`h-full rounded-full progress-bar ${getScoreBarColor(result.score)}`} style={{ width: `${result.score}%` }} />
-            </div>
-            <div className="flex justify-between mt-1 text-xs text-dark-500"><span>AI Generated</span><span>Human Written</span></div>
+      {error && (
+        <div className="bg-yellow-500/10 border border-yellow-500/30 rounded-xl p-4">
+          <p className="text-sm text-yellow-300/90">{error}</p>
+        </div>
+      )}
+
+      {ml && (
+        <div className="bg-gradient-to-br from-dark-800/80 to-dark-900/80 border border-accent-500/30 rounded-xl p-6">
+          <div className="flex items-center justify-between mb-4">
+            <h3 className="text-lg font-medium text-white flex items-center gap-2">
+              <Shield className="w-5 h-5 text-accent-400" /> ML Detector Verdict
+            </h3>
+            {ml.source === 'rudra' && (
+              <span className="text-[10px] px-2 py-0.5 rounded-full bg-green-500/10 text-green-400 border border-green-500/20">
+                hosted RoBERTa · free
+              </span>
+            )}
           </div>
 
-          {/* Disclaimer */}
-          <div className="bg-yellow-500/10 border border-yellow-500/30 rounded-xl p-4">
-            <p className="text-sm text-yellow-300/80 text-center">
-              ⚠️ This is a <strong>local pattern analysis</strong>, not real AI detection. For accurate results, test your text on{' '}
-              <a href="https://gptzero.me" target="_blank" rel="noopener" className="underline hover:text-yellow-300">GPTZero</a>,{' '}
-              <a href="https://quillbot.com/ai-content-detector" target="_blank" rel="noopener" className="underline hover:text-yellow-300">QuillBot</a>, or{' '}
-              <a href="https://originality.ai" target="_blank" rel="noopener" className="underline hover:text-yellow-300">Originality.ai</a>.
-            </p>
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-6 items-center">
+            <div className="text-center">
+              <div className={`text-6xl font-bold ${scoreColor} mb-2`}>
+                {(ml.humanProbability * 100).toFixed(1)}%
+              </div>
+              <div className="text-sm text-dark-400">Human probability</div>
+            </div>
+            <div className="text-center">
+              <div className={`text-6xl font-bold ${ml.label === 'ai' ? 'text-red-400' : 'text-dark-300'} mb-2`}>
+                {(ml.aiProbability * 100).toFixed(1)}%
+              </div>
+              <div className="text-sm text-dark-400">AI probability</div>
+            </div>
+          </div>
+
+          <div className="mt-4 pt-4 border-t border-dark-700/50 flex items-center justify-between text-sm">
+            <span className="text-dark-300">
+              Verdict: <span className={ml.label === 'human' ? 'text-green-400 font-medium' : 'text-red-400 font-medium'}>
+                {ml.label === 'human' ? 'Likely Human' : 'Likely AI'}
+              </span>
+            </span>
+            <span className="text-xs text-dark-500">
+              {ml.model}{ml.elapsedMs > 0 && ` · ${ml.elapsedMs}ms`}
+            </span>
+          </div>
+        </div>
+      )}
+
+      {heuristic && (
+        <>
+          {/* Heuristic score (secondary — gives the percentage shown historically) */}
+          <div className="bg-dark-800/50 border border-dark-700/50 rounded-xl p-6">
+            <div className="text-center mb-4">
+              <div className="flex items-center justify-center gap-2 mb-2">
+                {(() => { const Icon = verdictIcon; return <Icon className={`w-5 h-5 ${scoreColor}`} />; })()}
+                <span className={`text-lg font-medium ${scoreColor}`}>{verdictLabel}</span>
+              </div>
+              <div className={`text-3xl font-bold ${getScoreColor(heuristic.score)} mb-1`}>{heuristic.score}%</div>
+              <div className="text-xs text-dark-500">heuristic pattern score (supplementary)</div>
+            </div>
+            <div className="h-3 bg-dark-700 rounded-full overflow-hidden">
+              <div className={`h-full rounded-full progress-bar ${getScoreBarColor(heuristic.score)}`} style={{ width: `${heuristic.score}%` }} />
+            </div>
+            <div className="flex justify-between mt-1 text-xs text-dark-500"><span>AI Generated</span><span>Human Written</span></div>
           </div>
 
           {/* Detection Metrics */}
           <div className="bg-dark-800/50 border border-dark-700/50 rounded-xl p-6">
             <h3 className="text-lg font-medium text-white flex items-center gap-2 mb-4">
-              <BarChart3 className="w-5 h-5 text-accent-400" /> Detection Analysis
+              <BarChart3 className="w-5 h-5 text-accent-400" /> Heuristic Analysis
             </h3>
             <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3">
               {[
-                { label: 'Burstiness', value: result.analysis.burstiness, desc: 'Sentence variation', good: true },
-                { label: 'Vocab Diversity', value: result.analysis.vocabularyDiversity, desc: 'Unique words', good: true },
-                { label: 'Perplexity', value: result.analysis.perplexity, desc: 'Predictability', good: true },
-                { label: 'Sentence Variation', value: result.analysis.sentenceLengthVariation, desc: 'Length diffs', good: true },
-                { label: 'Start Diversity', value: result.analysis.sentenceStartDiversity, desc: 'Unique openers', good: true },
-                { label: 'Pronoun Usage', value: result.analysis.pronounUsage, desc: 'I/we/you usage', good: true },
-                { label: 'Transition Freq.', value: result.analysis.transitionFrequency, desc: 'AI transitions', good: false },
-                { label: 'Passive Voice', value: result.analysis.passiveVoiceRatio, desc: 'Passive usage', good: false },
-                { label: 'AI Phrases', value: result.analysis.aiPhraseDensity, desc: 'AI patterns', good: false },
-                { label: 'Hedging', value: result.analysis.hedgingFrequency, desc: 'Hedging words', good: false },
-                { label: 'Quantifiers', value: result.analysis.quantifierOveruse, desc: 'Overuse', good: false },
+                { label: 'Burstiness', value: heuristic.analysis.burstiness, desc: 'Sentence variation', good: true },
+                { label: 'Vocab Diversity', value: heuristic.analysis.vocabularyDiversity, desc: 'Unique words', good: true },
+                { label: 'Perplexity', value: heuristic.analysis.perplexity, desc: 'Predictability', good: true },
+                { label: 'Sentence Variation', value: heuristic.analysis.sentenceLengthVariation, desc: 'Length diffs', good: true },
+                { label: 'Start Diversity', value: heuristic.analysis.sentenceStartDiversity, desc: 'Unique openers', good: true },
+                { label: 'Pronoun Usage', value: heuristic.analysis.pronounUsage, desc: 'I/we/you usage', good: true },
+                { label: 'Transition Freq.', value: heuristic.analysis.transitionFrequency, desc: 'AI transitions', good: false },
+                { label: 'Passive Voice', value: heuristic.analysis.passiveVoiceRatio, desc: 'Passive usage', good: false },
+                { label: 'AI Phrases', value: heuristic.analysis.aiPhraseDensity, desc: 'AI patterns', good: false },
+                { label: 'Hedging', value: heuristic.analysis.hedgingFrequency, desc: 'Hedging words', good: false },
+                { label: 'Quantifiers', value: heuristic.analysis.quantifierOveruse, desc: 'Overuse', good: false },
               ].map(metric => (
                 <div key={metric.label} className="bg-dark-700/30 rounded-lg p-3">
                   <div className="flex justify-between items-center">
@@ -133,32 +243,32 @@ export default function Detector({ showToast }: DetectorProps) {
             </h3>
             <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
               <div className="bg-dark-700/30 rounded-lg p-4 text-center">
-                <p className={`text-2xl font-bold ${readLabel?.color}`}>{result.readability.fleschReadingEase}</p>
+                <p className={`text-2xl font-bold ${readLabel?.color}`}>{heuristic.readability.fleschReadingEase}</p>
                 <p className="text-xs text-dark-400 mt-1">Flesch Reading Ease</p>
                 <p className={`text-xs mt-1 ${readLabel?.color}`}>{readLabel?.label}</p>
               </div>
               <div className="bg-dark-700/30 rounded-lg p-4 text-center">
-                <p className="text-2xl font-bold text-dark-200">{result.readability.fleschKincaidGrade}</p>
+                <p className="text-2xl font-bold text-dark-200">{heuristic.readability.fleschKincaidGrade}</p>
                 <p className="text-xs text-dark-400 mt-1">Grade Level</p>
-                <p className="text-xs text-dark-500 mt-1">{getGradeLevelDescription(result.readability.fleschKincaidGrade)}</p>
+                <p className="text-xs text-dark-500 mt-1">{getGradeLevelDescription(heuristic.readability.fleschKincaidGrade)}</p>
               </div>
               <div className="bg-dark-700/30 rounded-lg p-4 text-center">
-                <p className="text-2xl font-bold text-dark-200">{result.readability.colemanLiauIndex}</p>
+                <p className="text-2xl font-bold text-dark-200">{heuristic.readability.colemanLiauIndex}</p>
                 <p className="text-xs text-dark-400 mt-1">Coleman-Liau</p>
               </div>
               <div className="bg-dark-700/30 rounded-lg p-4 text-center">
-                <p className="text-2xl font-bold text-dark-200">{result.readability.readingTimeMinutes}m</p>
+                <p className="text-2xl font-bold text-dark-200">{heuristic.readability.readingTimeMinutes}m</p>
                 <p className="text-xs text-dark-400 mt-1">Reading Time</p>
-                <p className="text-xs text-dark-500 mt-1">{result.readability.totalWords} words</p>
+                <p className="text-xs text-dark-500 mt-1">{heuristic.readability.totalWords} words</p>
               </div>
             </div>
           </div>
 
           {/* Sentences */}
           <div className="bg-dark-800/50 border border-dark-700/50 rounded-xl p-6">
-            <h3 className="text-lg font-medium text-white mb-4">Sentence-by-Sentence ({result.sentences.length} sentences)</h3>
+            <h3 className="text-lg font-medium text-white mb-4">Sentence-by-Sentence Heuristic ({heuristic.sentences.length} sentences)</h3>
             <div className="space-y-2">
-              {result.sentences.map((sentence, i) => (
+              {heuristic.sentences.map((sentence, i) => (
                 <div key={i} className={`sentence-highlight p-3 rounded-lg border ${getClassificationColor(sentence.classification)}`}>
                   <div className="flex items-start justify-between gap-2">
                     <p className="text-sm text-dark-200 flex-1">{sentence.text}</p>
@@ -177,7 +287,7 @@ export default function Detector({ showToast }: DetectorProps) {
               ))}
             </div>
           </div>
-        </div>
+        </>
       )}
     </div>
   );
