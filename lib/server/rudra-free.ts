@@ -14,8 +14,12 @@
  */
 
 const DEFAULT_RUDRA_BASE = 'https://129.159.229.170';
-const HUMANIZE_TIMEOUT_MS = 30_000;
-const DETECT_TIMEOUT_MS = 10_000;
+// gemma3:4b on free-tier ARM (Ampere A1) takes ~15s per 100 words of input.
+// A 600-word essay can run 60-90s upstream. The Vercel route sets
+// maxDuration=120 to match — keep this 10s under that so the fetch fails
+// before Vercel kills the function, leaving room for a clean error response.
+const HUMANIZE_TIMEOUT_MS = 110_000;
+const DETECT_TIMEOUT_MS = 15_000;
 
 function getBaseUrl(): string {
   const v = (process.env.RUDRA_API_BASE_URL || '').trim();

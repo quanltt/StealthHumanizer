@@ -3,6 +3,9 @@ import { detectWithGPTZero } from '@/lib/gptzero';
 import { detectWithRudra, isRudraDetectorConfigured } from '@/lib/server/rudra-free';
 import { checkRateLimit } from '@/lib/rate-limit';
 
+// RoBERTa detection is fast (~70ms typical) but allow margin for cold starts.
+export const maxDuration = 30;
+
 export async function POST(request: NextRequest) {
   try {
     // Rate limiting

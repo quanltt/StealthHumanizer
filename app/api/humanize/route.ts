@@ -56,6 +56,12 @@ async function llmSelfCheck(
   return { score: 50, issues: [], flaggedSentences: [] };
 }
 
+// Vercel function timeout — gemma3:4b on Oracle's free ARM CPU takes ~15s per
+// 100 words. A 600-word essay runs ~90s upstream; we set maxDuration=120 so
+// long inputs don't get killed mid-call. The fetch inside rudra-free.ts
+// caps at 110s so we get a clean error response back instead of Vercel's 504.
+export const maxDuration = 120;
+
 export async function POST(request: NextRequest) {
   try {
     const startedAt = Date.now();
@@ -411,6 +417,10 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ success: true, ...responsePayload });
   } catch (err: unknown) {
     const message = err instanceof Error ? err.message : 'Internal error';
-    return NextResponse.json({ success: false, error: process.env.NODE_ENV === 'development' ? message : 'Internal error' }, { status: 500 });
+    // Surface actionable errors verbatim (timeouts, 502s from upstream, config
+    // issues) — these are user-relevant. Stack traces stay hidden.
+    const isActionable = /timeout|timed out|unreachable|502|503|504|Rudra|upstream|preconfigured/i.test(message);
+    const safe = isActionable ? message : 'Internal error';
+    return NextResponse.json({ success: false, error: safe }, { status: 500 });
   }
 }
