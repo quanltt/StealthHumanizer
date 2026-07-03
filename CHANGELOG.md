@@ -5,6 +5,36 @@ All notable changes to this project are documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and
 this project follows [Semantic Versioning](https://semver.org/).
 
+## [2.4.0] - 2026-07-04
+
+### Added — Rudra's Free Usage Model (zero-config default)
+
+- **New default provider: "Rudra's Free Usage Model."** The public Vercel
+  deployment now ships with a pre-configured humanizer + detector pair hosted on
+  the maintainer's free Oracle Cloud ARM VPS. No API key needed from the user —
+  just paste text and click Humanize.
+  - Humanizer: `WhiteRoomProdigy/amicus-humanizer-v1-onnx` (T5-base, 60M, ONNX INT8)
+  - Detector: `fakespot-ai/roberta-base-ai-text-detection-v1` (RoBERTa-base, 125M)
+- **Independent AI-detector verdict now shown below every humanize result.**
+  After each successful humanize, the app automatically fires the hosted
+  RoBERTa detector on the output and renders the verdict (Likely Human / Likely
+  AI + AI probability) in a separate panel, distinct from the heuristic
+  `finalScore`.
+- **Server-side proxy module** (`lib/server/rudra-free.ts`) keeps the API keys
+  in Vercel env vars (`RUDRA_HUMANIZER_API_KEY`, `RUDRA_DETECTOR_API_KEY`,
+  `RUDRA_API_BASE_URL`). Keys never reach the browser bundle.
+- **Settings UI** hides the API key field for Rudra's Free Usage Model and
+  shows a "Pre-configured" notice instead.
+- **Self-hosters** can opt out by setting `NEXT_PUBLIC_DEFAULT_PROVIDER=gemini`
+  (or any other provider id). See `.env.example` for the full set of new vars.
+
+### Notes
+
+- The detector's verdict is intentionally shown as a separate panel rather than
+  blended into the heuristic score — RoBERTa detectors have a known high
+  false-positive rate on formal prose, so the two numbers measure different
+  things.
+
 ## [2.3.0] - 2026-06-28
 
 ### Fixed — humanization quality overhaul

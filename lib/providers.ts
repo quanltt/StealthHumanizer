@@ -116,6 +116,18 @@ export async function fetchWithRetry(
 
 export const PROVIDERS: Provider[] = [
   {
+    id: 'rudra-free',
+    name: "Rudra's Free Usage Model",
+    description: 'Free pre-configured model hosted on the maintainer’s Oracle Cloud ARM VPS. No API key needed — just click Humanize. Powered by amicus-humanizer-v1 (ONNX INT8, 60M). Default for all new users.',
+    free: true,
+    apiUrl: '',
+    getApiKeyUrl: '',
+    docsUrl: 'https://github.com/rudra496/StealthHumanizer#rudras-free-usage-model',
+    defaultModel: 'amicus-humanizer-v1-onnx',
+    models: ['amicus-humanizer-v1-onnx'],
+    placeholder: 'pre-configured',
+  },
+  {
     id: 'gemini',
     name: 'Google Gemini',
     description: 'Free tier with generous limits. Recommended for most users!',
@@ -594,6 +606,7 @@ export function getAvailableProvider(keys: Record<string, string | undefined>): 
   // are intentionally omitted — they require a local binary and explicit
   // --model selection, so we never auto-select them.
   const priority: ModelProvider[] = [
+    'rudra-free',
     'gemini', 'groq', 'openrouter', 'together', 'cerebras', 'zai',
     'mistral', 'cohere', 'deepinfra', 'huggingface', 'cloudflare',
     'codebuff', 'command-code',

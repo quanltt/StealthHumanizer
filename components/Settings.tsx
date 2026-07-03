@@ -235,43 +235,67 @@ export default function Settings({ showToast }: SettingsProps) {
           </div>
 
           <div>
-            <label className="block text-sm font-medium text-dark-300 mb-2">API Key</label>
-            <div className="flex gap-2">
-              <div className="flex-1 relative">
-                <input type={showKeys[current.id] ? 'text' : 'password'}
-                  value={keys[current.id] || ''}
-                  onChange={e => setKeys(prev => ({ ...prev, [current.id]: e.target.value }))}
-                  placeholder={current.placeholder}
-                  className="w-full px-4 py-3 bg-dark-900/50 border border-dark-700/50 rounded-lg text-white placeholder-dark-500 focus:outline-none focus:ring-2 focus:ring-accent-500/50 pr-10" />
-                <button onClick={() => setShowKeys(prev => ({ ...prev, [current.id]: !prev[current.id] }))}
-                  className="absolute right-3 top-1/2 -translate-y-1/2 text-dark-500 hover:text-dark-300">
-                  {showKeys[current.id] ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
-                </button>
+            {current.id === 'rudra-free' ? (
+              <div className="bg-green-500/5 border border-green-500/30 rounded-lg p-4 flex items-start gap-3">
+                <Check className="w-5 h-5 text-green-400 mt-0.5 flex-shrink-0" />
+                <div>
+                  <div className="text-sm font-medium text-green-300">Pre-configured · No API key needed</div>
+                  <p className="text-xs text-dark-400 mt-1">
+                    The maintainer hosts this model on a free Oracle Cloud ARM VPS and exposes it
+                    via the StealthHumanizer server. Just close this dialog, paste your text, and
+                    click Humanize. Available on the public Vercel deployment by default.
+                  </p>
+                  <p className="text-xs text-dark-500 mt-2">
+                    Self-hosters: set <code className="text-dark-300">RUDRA_HUMANIZER_API_KEY</code> on
+                    your Vercel/Node server. See <code className="text-dark-300">.env.example</code>.
+                  </p>
+                </div>
               </div>
-              <button onClick={() => handleSave(current.id, keys[current.id] || '')}
-                className="px-4 py-3 rounded-lg bg-accent-500 text-white font-medium hover:bg-accent-600 transition-colors">
-                Save
-              </button>
-            </div>
-          </div>
-
-          <div className="flex flex-wrap gap-2">
-            <button onClick={() => handleTest(current.id)} disabled={testing === current.id}
-              className="flex items-center gap-2 px-4 py-2 rounded-lg bg-dark-700 hover:bg-dark-600 text-dark-200 text-sm disabled:opacity-50">
-              {testing === current.id ? <div className="w-4 h-4 border-2 border-dark-400 border-t-white rounded-full animate-spin" /> : <Check className="w-4 h-4" />}
-              {testing === current.id ? 'Testing...' : 'Test Key'}
-            </button>
-            <a href={current.getApiKeyUrl} target="_blank" rel="noopener noreferrer"
-              className="flex items-center gap-2 px-4 py-2 rounded-lg bg-dark-700 hover:bg-dark-600 text-dark-200 text-sm">
-              <ExternalLink className="w-4 h-4" /> Get API Key
-            </a>
-            {current.docsUrl && (
-              <a href={current.docsUrl} target="_blank" rel="noopener noreferrer"
-                className="flex items-center gap-2 px-4 py-2 rounded-lg bg-dark-700 hover:bg-dark-600 text-dark-200 text-sm">
-                <ExternalLink className="w-4 h-4" /> Docs
-              </a>
+            ) : (
+              <>
+                <label className="block text-sm font-medium text-dark-300 mb-2">API Key</label>
+                <div className="flex gap-2">
+                  <div className="flex-1 relative">
+                    <input type={showKeys[current.id] ? 'text' : 'password'}
+                      value={keys[current.id] || ''}
+                      onChange={e => setKeys(prev => ({ ...prev, [current.id]: e.target.value }))}
+                      placeholder={current.placeholder}
+                      className="w-full px-4 py-3 bg-dark-900/50 border border-dark-700/50 rounded-lg text-white placeholder-dark-500 focus:outline-none focus:ring-2 focus:ring-accent-500/50 pr-10" />
+                    <button onClick={() => setShowKeys(prev => ({ ...prev, [current.id]: !prev[current.id] }))}
+                      className="absolute right-3 top-1/2 -translate-y-1/2 text-dark-500 hover:text-dark-300">
+                      {showKeys[current.id] ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                    </button>
+                  </div>
+                  <button onClick={() => handleSave(current.id, keys[current.id] || '')}
+                    className="px-4 py-3 rounded-lg bg-accent-500 text-white font-medium hover:bg-accent-600 transition-colors">
+                    Save
+                  </button>
+                </div>
+              </>
             )}
           </div>
+
+          {current.id !== 'rudra-free' && (
+            <div className="flex flex-wrap gap-2">
+              <button onClick={() => handleTest(current.id)} disabled={testing === current.id}
+                className="flex items-center gap-2 px-4 py-2 rounded-lg bg-dark-700 hover:bg-dark-600 text-dark-200 text-sm disabled:opacity-50">
+                {testing === current.id ? <div className="w-4 h-4 border-2 border-dark-400 border-t-white rounded-full animate-spin" /> : <Check className="w-4 h-4" />}
+                {testing === current.id ? 'Testing...' : 'Test Key'}
+              </button>
+              {current.getApiKeyUrl && (
+                <a href={current.getApiKeyUrl} target="_blank" rel="noopener noreferrer"
+                  className="flex items-center gap-2 px-4 py-2 rounded-lg bg-dark-700 hover:bg-dark-600 text-dark-200 text-sm">
+                  <ExternalLink className="w-4 h-4" /> Get API Key
+                </a>
+              )}
+              {current.docsUrl && (
+                <a href={current.docsUrl} target="_blank" rel="noopener noreferrer"
+                  className="flex items-center gap-2 px-4 py-2 rounded-lg bg-dark-700 hover:bg-dark-600 text-dark-200 text-sm">
+                  <ExternalLink className="w-4 h-4" /> Docs
+                </a>
+              )}
+            </div>
+          )}
 
           {/* Model selector */}
           {current.models.length > 1 && (

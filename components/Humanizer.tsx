@@ -85,6 +85,19 @@ export default function Humanizer({ showToast, onGoToSettings, isFirstVisit }: H
   const [showReadability, setShowReadability] = useState(false);
   const [showShortcuts, setShowShortcuts] = useState(false);
 
+  // Post-humanize detection result (from the hosted RoBERTa detector, when
+  // configured server-side). Null until the auto-detect-after-humanize fires.
+  const [postDetect, setPostDetect] = useState<{
+    label: 'human' | 'ai';
+    aiProbability: number;
+    humanProbability: number;
+    model: string;
+    elapsedMs: number;
+    source: string;
+  } | null>(null);
+  const [postDetectLoading, setPostDetectLoading] = useState(false);
+  const [postDetectError, setPostDetectError] = useState<string | null>(null);
+
   // File upload
   const [fileUploading, setFileUploading] = useState(false);
   const [dragOver, setDragOver] = useState(false);
@@ -107,11 +120,11 @@ export default function Humanizer({ showToast, onGoToSettings, isFirstVisit }: H
   const [enableChain, setEnableChain] = useState(false);
   const [selectedChainModels, setSelectedChainModels] = useState<string[]>([]);
   const [pipelineStep, setPipelineStep] = useState('');
-  // Self-hosted deployments (e.g. VPS with local Ollama) can pin a default
-  // provider via NEXT_PUBLIC_DEFAULT_PROVIDER so the app is zero-config there.
-  // Unset → 'gemini', preserving the public hosted-app behaviour unchanged.
+  // Default provider on the public Vercel deployment is "Rudra's Free Usage
+  // Model" — pre-configured, no API key needed. Self-hosters can override via
+  // NEXT_PUBLIC_DEFAULT_PROVIDER (e.g. "gemini", "ollama").
   const DEFAULT_PROVIDER: ModelProvider =
-    ((process.env.NEXT_PUBLIC_DEFAULT_PROVIDER as ModelProvider | undefined) || 'gemini');
+    ((process.env.NEXT_PUBLIC_DEFAULT_PROVIDER as ModelProvider | undefined) || 'rudra-free');
   const [preferredModel, setPreferredModel] = useState<ModelProvider>(DEFAULT_PROVIDER);
   const [intensity, setIntensity] = useState<Intensity>('medium');
 
@@ -164,7 +177,11 @@ export default function Humanizer({ showToast, onGoToSettings, isFirstVisit }: H
     const localProviders: ModelProvider[] = ['ollama', 'lm-studio', 'vllm'];
     const hasKey = (id: string) => !!keys[id]?.trim();
     let providerId: ModelProvider;
-    if (hasKey(preferredModel)) {
+    // "Rudra's Free Usage Model" needs no client API key — the server uses
+    // a preconfigured env var. Always allow it as a valid pick.
+    if (preferredModel === 'rudra-free') {
+      providerId = 'rudra-free';
+    } else if (hasKey(preferredModel)) {
       providerId = preferredModel;
     } else if (localProviders.includes(preferredModel)) {
       providerId = preferredModel;
@@ -173,9 +190,11 @@ export default function Humanizer({ showToast, onGoToSettings, isFirstVisit }: H
     }
     const apiKey =
       keys[providerId]?.trim() ||
-      (localProviders.includes(providerId)
-        ? (PROVIDERS.find(p => p.id === providerId)?.placeholder || 'ollama')
-        : undefined);
+      (providerId === 'rudra-free'
+        ? 'pre-configured'
+        : localProviders.includes(providerId)
+          ? (PROVIDERS.find(p => p.id === providerId)?.placeholder || 'ollama')
+          : undefined);
     return { providerId, apiKey };
   };
 
@@ -234,12 +253,14 @@ export default function Humanizer({ showToast, onGoToSettings, isFirstVisit }: H
     }
 
     const { providerId, apiKey } = getApiCredentials();
-    if (!apiKey) { showToast('warning', 'Please add an API key in Settings first, or enable Privacy Mode for an offline local rewrite.'); return; }
+    if (!apiKey && providerId !== 'rudra-free') { showToast('warning', 'Please add an API key in Settings first, pick Rudra’s Free Usage Model, or enable Privacy Mode for an offline local rewrite.'); return; }
 
     setLoading(true);
     setResult(null);
     setGrammarIssues([]);
     setCorrectedText('');
+    setPostDetect(null);
+    setPostDetectError(null);
     setPipelineStep('Step 1: LLM Rewrite...');
     setProgress({ pass: 0, max: 2, message: 'Layer 1: LLM Rewrite...' });
 
@@ -294,6 +315,50 @@ export default function Humanizer({ showToast, onGoToSettings, isFirstVisit }: H
       setLoading(false);
       setPipelineStep('');
       setProgress({ pass: 0, max: 0, message: '' });
+
+      // Fire-and-forget: run the hosted RoBERTa detector on the humanized
+      // output so the user sees an independent AI-probability verdict right
+      // below the heuristic score. Never blocks or fails the humanize call.
+      (async () => {
+        try {
+          setPostDetectLoading(true);
+          const r = await fetch(`${BASE_PATH}/api/detect`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ text: data.fullText }),
+          });
+          if (!r.ok) throw new Error(`Detector HTTP ${r.status}`);
+          const json = await r.json();
+          if (!json?.success) throw new Error(json?.error || 'Detector failed');
+          const d = json.data;
+          if (d?.source === 'rudra' && typeof d.aiProbability === 'number') {
+            setPostDetect({
+              label: d.verdict === 'generated' || d.aiProbability >= 0.5 ? 'ai' : 'human',
+              aiProbability: d.aiProbability,
+              humanProbability: typeof d.humanProbability === 'number'
+                ? d.humanProbability
+                : 1 - d.aiProbability,
+              model: d.model || 'roberta-ai-detector',
+              elapsedMs: d.elapsedMs || 0,
+              source: 'rudra',
+            });
+          } else if (typeof d?.score === 'number') {
+            // GPTZero or local-fallback shape.
+            setPostDetect({
+              label: d.score >= 0.5 ? 'ai' : 'human',
+              aiProbability: d.score,
+              humanProbability: 1 - d.score,
+              model: d.source === 'gptzero' ? 'GPTZero' : 'local heuristic',
+              elapsedMs: 0,
+              source: d.source || 'fallback',
+            });
+          }
+        } catch (err: any) {
+          setPostDetectError(err?.message || 'Detection failed');
+        } finally {
+          setPostDetectLoading(false);
+        }
+      })();
     } catch (err: any) {
       showToast('error', err.message || 'Something went wrong');
       setLoading(false);
@@ -1278,6 +1343,52 @@ export default function Humanizer({ showToast, onGoToSettings, isFirstVisit }: H
               {result.fallbackBehavior?.used ? 'engaged' : 'not needed'}
             </span>
           </span>
+        </div>
+      )}
+
+      {/* Independent AI-detector verdict — fires after every successful humanize
+          so the user can see how a real RoBERTa-based detector scores the output.
+          This is separate from the heuristic `finalScore` above. */}
+      {result && (postDetectLoading || postDetect || postDetectError) && (
+        <div className="bg-dark-800/40 border border-dark-700/40 rounded-xl p-4 animate-fade-in">
+          <div className="flex items-center justify-between mb-3">
+            <h4 className="text-sm font-semibold text-white flex items-center gap-2">
+              <Shield className="w-4 h-4 text-accent-400" />
+              AI Detector Verdict
+              <span className="text-xs font-normal text-dark-500">(independent of the heuristic score)</span>
+            </h4>
+            {postDetect?.source === 'rudra' && (
+              <span className="text-[10px] px-2 py-0.5 rounded-full bg-green-500/10 text-green-400 border border-green-500/20">
+                hosted RoBERTa · free
+              </span>
+            )}
+          </div>
+          {postDetectLoading && (
+            <p className="text-sm text-dark-400">Running detector on the humanized text…</p>
+          )}
+          {postDetectError && !postDetectLoading && (
+            <p className="text-sm text-yellow-400">Detector unavailable: {postDetectError}</p>
+          )}
+          {postDetect && !postDetectLoading && (
+            <div className="grid grid-cols-2 gap-3 text-sm">
+              <div>
+                <div className="text-xs text-dark-500 mb-1">Verdict</div>
+                <div className={`text-2xl font-bold ${postDetect.label === 'human' ? 'text-green-400' : 'text-red-400'}`}>
+                  {postDetect.label === 'human' ? 'Likely Human' : 'Likely AI'}
+                </div>
+              </div>
+              <div>
+                <div className="text-xs text-dark-500 mb-1">AI probability</div>
+                <div className="text-2xl font-bold text-white">
+                  {(postDetect.aiProbability * 100).toFixed(1)}%
+                </div>
+                <div className="text-xs text-dark-500 mt-1">
+                  Human: {(postDetect.humanProbability * 100).toFixed(1)}% · {postDetect.model}
+                  {postDetect.elapsedMs > 0 && ` · ${postDetect.elapsedMs}ms`}
+                </div>
+              </div>
+            </div>
+          )}
         </div>
       )}
 

@@ -3,6 +3,7 @@
 // ==================== PROVIDER TYPES ====================
 
 export type ModelProvider =
+  | 'rudra-free'
   | 'gemini' | 'openai' | 'claude'
   | 'groq' | 'mistral' | 'cohere'
   | 'together' | 'openrouter' | 'cerebras'

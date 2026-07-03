@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { detectWithGPTZero } from '@/lib/gptzero';
+import { detectWithRudra, isRudraDetectorConfigured } from '@/lib/server/rudra-free';
 import { checkRateLimit } from '@/lib/rate-limit';
 
 export async function POST(request: NextRequest) {
@@ -28,6 +29,29 @@ export async function POST(request: NextRequest) {
 
     if (text.length > 50000) {
       return NextResponse.json({ success: false, error: 'Text exceeds 50,000 character limit' }, { status: 400 });
+    }
+
+    // Prefer the maintainer's hosted detector (free, no key needed from the
+    // user). Falls through to GPTZero if the Rudra env vars are unset, and
+    // finally to the local heuristic detector inside detectWithGPTZero.
+    if (isRudraDetectorConfigured()) {
+      try {
+        const r = await detectWithRudra(text);
+        return NextResponse.json({
+          success: true,
+          data: {
+            score: r.aiProbability,
+            verdict: r.label === 'ai' ? 'generated' : 'human',
+            sentences: [],
+            source: 'rudra' as const,
+            model: r.model,
+            elapsedMs: r.elapsedMs,
+            humanProbability: r.humanProbability,
+          },
+        });
+      } catch {
+        // Fall through to GPTZero/local on upstream errors.
+      }
     }
 
     const result = await detectWithGPTZero(text);

@@ -9,6 +9,7 @@ import { localRehumanizeSentence, replaceSentencesInText } from '@/lib/rehumaniz
 import { loadStyleModelAsync, loadStyleModel, hasStyleModel } from '@/lib/style-model';
 import { calibrateWithCorpus } from '@/lib/detector';
 import { chainModels } from '@/lib/chain';
+import { humanizeWithRudra, isRudraHumanizerConfigured } from '@/lib/server/rudra-free';
 import {
   appendAuditLog,
   applyRewriteRegressionGuard,
@@ -93,13 +94,20 @@ export async function POST(request: NextRequest) {
       ? (requestIntensity as Intensity)
       : (style === 'stealth' ? 'aggressive' : 'light');
 
-    if (!text || !model || !apiKey) return NextResponse.json({ success: false, error: 'Missing required fields' }, { status: 400 });
+    if (!text || !model) return NextResponse.json({ success: false, error: 'Missing required fields' }, { status: 400 });
+    // "Rudra's Free Usage Model" needs no client apiKey — the server uses a
+    // preconfigured Vercel env var. Skip all the provider/cli/apiKey checks.
+    const isRudraFree = model === 'rudra-free';
+    if (!isRudraFree && !apiKey) return NextResponse.json({ success: false, error: 'Missing required fields' }, { status: 400 });
     // Reject CLI-only runners on the primary model AND anywhere in the chain —
     // chainModels flows through lib/chain into the CLI-capable runtime, so an
     // unguarded chain entry would otherwise spawn the server's local CLI.
     const cliOnlyRequested = [model, ...(Array.isArray(chainModelIds) ? chainModelIds : [])]
       .find((id) => isCliOnlyProvider(id as ModelProvider));
     if (cliOnlyRequested) return NextResponse.json({ success: false, error: `Provider "${cliOnlyRequested}" is a local CLI runner and is not available over the web API. Use the stealthhumanizer CLI.` }, { status: 400 });
+    if (isRudraFree && !isRudraHumanizerConfigured()) {
+      return NextResponse.json({ success: false, error: "Rudra's Free Usage Model is not configured on this deployment. Set RUDRA_HUMANIZER_API_KEY or pick a different provider." }, { status: 503 });
+    }
     if (countWords(text) > 10000) return NextResponse.json({ success: false, error: 'Exceeds 10,000 word limit' }, { status: 400 });
     if (Array.isArray(batchTexts) && batchTexts.length > MAX_BATCH_SIZE) {
       return NextResponse.json({ success: false, error: `Batch size exceeds limit (${MAX_BATCH_SIZE}).` }, { status: 400 });
@@ -149,13 +157,18 @@ export async function POST(request: NextRequest) {
         async (batchInput: string, i: number) => {
           const chunks = chunkText(batchInput, 2500);
           let rewritten = '';
-          for (let j = 0; j < chunks.length; j++) {
-            const out = await generateWithProvider(model, apiKey, systemPrompt, chunks[j], {
-              model: modelId,
-              temperature: params.temperature,
-              topP: params.topP,
-            });
-            rewritten += (j > 0 ? '\n\n' : '') + out;
+          if (isRudraFree) {
+            const r = await humanizeWithRudra(batchInput);
+            rewritten = r.text;
+          } else {
+            for (let j = 0; j < chunks.length; j++) {
+              const out = await generateWithProvider(model, apiKey, systemPrompt, chunks[j], {
+                model: modelId,
+                temperature: params.temperature,
+                topP: params.topP,
+              });
+              rewritten += (j > 0 ? '\n\n' : '') + out;
+            }
           }
           const final = enablePostprocess ? postprocess(rewritten, { light: true, style: style as any, synonymIntensity }) : rewritten;
           const detection = detectAI(final);
@@ -194,16 +207,23 @@ export async function POST(request: NextRequest) {
       langNote = '\n\nIMPORTANT: The text is in a language other than English. Rewrite it in the SAME language. Do NOT translate.';
     }
 
-    // ==================== LAYER 1: LLM Rewrite ====================
+    // ==================== LAYER 1: LLM Rewrite (or Rudra Free proxy) ====================
     let humanizedText = '';
-    for (let i = 0; i < chunks.length; i++) {
-      const chunkPrompt = chunks[i] + langNote;
-      const result = await generateWithProvider(model, apiKey, systemPrompt, chunkPrompt, {
-        model: modelId,
-        temperature: params.temperature,
-        topP: params.topP,
-      });
-      humanizedText += (i > 0 ? '\n\n' : '') + result;
+    if (isRudraFree) {
+      // Rudra's hosted model takes the whole text in one shot — no chunking,
+      // no system prompt. The model is purpose-built for humanization.
+      const rudraResult = await humanizeWithRudra(text);
+      humanizedText = rudraResult.text;
+    } else {
+      for (let i = 0; i < chunks.length; i++) {
+        const chunkPrompt = chunks[i] + langNote;
+        const result = await generateWithProvider(model, apiKey, systemPrompt, chunkPrompt, {
+          model: modelId,
+          temperature: params.temperature,
+          topP: params.topP,
+        });
+        humanizedText += (i > 0 ? '\n\n' : '') + result;
+      }
     }
 
     let passes = 1;
