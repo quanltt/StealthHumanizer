@@ -49,30 +49,43 @@ export default function Detector({ showToast }: DetectorProps) {
       const json = await r.json();
       if (!json?.success) throw new Error(json?.error || 'Detection failed');
       const d = json.data;
-      if (d?.source === 'rudra' && typeof d.aiProbability === 'number') {
+      // Rudra (hosted RoBERTa) — primary path. Source flag is the authoritative
+      // signal; the aiProbability/humanProbability fields may or may not be set
+      // depending on the route version, so fall back to `score` if needed.
+      if (d?.source === 'rudra') {
+        const aiP = typeof d.aiProbability === 'number' ? d.aiProbability : d.score;
+        const humanP = typeof d.humanProbability === 'number' ? d.humanProbability : (1 - aiP);
         setMl({
-          label: d.verdict === 'generated' || d.aiProbability >= 0.5 ? 'ai' : 'human',
-          aiProbability: d.aiProbability,
-          humanProbability: typeof d.humanProbability === 'number' ? d.humanProbability : 1 - d.aiProbability,
-          model: d.model || 'roberta-ai-detector',
+          label: d.verdict === 'generated' || d.label === 'ai' || aiP >= 0.5 ? 'ai' : 'human',
+          aiProbability: aiP,
+          humanProbability: humanP,
+          model: d.model || 'fakespot-ai/roberta-base-ai-text-detection-v1',
           elapsedMs: d.elapsedMs || 0,
           source: 'rudra',
           verdict: d.verdict,
         });
+      } else if (d?.source === 'gptzero') {
+        setMl({
+          label: (d.score ?? 0) >= 0.5 ? 'ai' : 'human',
+          aiProbability: d.score ?? 0,
+          humanProbability: 1 - (d.score ?? 0),
+          model: 'GPTZero',
+          elapsedMs: 0,
+          source: 'gptzero',
+          verdict: d.verdict,
+        });
       } else if (typeof d?.score === 'number') {
-        // GPTZero or local-fallback shape from the server.
+        // Server-side local heuristic fallback — Rudra was unreachable.
         setMl({
           label: d.score >= 0.5 ? 'ai' : 'human',
           aiProbability: d.score,
           humanProbability: 1 - d.score,
-          model: d.source === 'gptzero' ? 'GPTZero' : 'local heuristic (server-side)',
+          model: 'local heuristic (server-side fallback)',
           elapsedMs: 0,
-          source: d.source || 'fallback',
+          source: 'fallback',
           verdict: d.verdict,
         });
-        if (d.source !== 'gptzero') {
-          setError('Hosted RoBERTa detector unavailable — showing server-side fallback.');
-        }
+        setError('Hosted RoBERTa detector unavailable — showing server-side fallback.');
       }
     } catch (err: any) {
       setError(err?.message || 'Detection request failed');

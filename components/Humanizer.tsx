@@ -331,26 +331,35 @@ export default function Humanizer({ showToast, onGoToSettings, isFirstVisit }: H
           const json = await r.json();
           if (!json?.success) throw new Error(json?.error || 'Detector failed');
           const d = json.data;
-          if (d?.source === 'rudra' && typeof d.aiProbability === 'number') {
+          if (d?.source === 'rudra') {
+            const aiP = typeof d.aiProbability === 'number' ? d.aiProbability : d.score;
+            const humanP = typeof d.humanProbability === 'number' ? d.humanProbability : (1 - aiP);
             setPostDetect({
-              label: d.verdict === 'generated' || d.aiProbability >= 0.5 ? 'ai' : 'human',
-              aiProbability: d.aiProbability,
-              humanProbability: typeof d.humanProbability === 'number'
-                ? d.humanProbability
-                : 1 - d.aiProbability,
-              model: d.model || 'roberta-ai-detector',
+              label: d.verdict === 'generated' || d.label === 'ai' || aiP >= 0.5 ? 'ai' : 'human',
+              aiProbability: aiP,
+              humanProbability: humanP,
+              model: d.model || 'fakespot-ai/roberta-base-ai-text-detection-v1',
               elapsedMs: d.elapsedMs || 0,
               source: 'rudra',
             });
+          } else if (d?.source === 'gptzero') {
+            const score = d.score ?? 0;
+            setPostDetect({
+              label: score >= 0.5 ? 'ai' : 'human',
+              aiProbability: score,
+              humanProbability: 1 - score,
+              model: 'GPTZero',
+              elapsedMs: 0,
+              source: 'gptzero',
+            });
           } else if (typeof d?.score === 'number') {
-            // GPTZero or local-fallback shape.
             setPostDetect({
               label: d.score >= 0.5 ? 'ai' : 'human',
               aiProbability: d.score,
               humanProbability: 1 - d.score,
-              model: d.source === 'gptzero' ? 'GPTZero' : 'local heuristic',
+              model: 'local heuristic (server-side fallback)',
               elapsedMs: 0,
-              source: d.source || 'fallback',
+              source: 'fallback',
             });
           }
         } catch (err: any) {

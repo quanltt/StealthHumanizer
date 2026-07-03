@@ -41,12 +41,14 @@ export async function POST(request: NextRequest) {
           success: true,
           data: {
             score: r.aiProbability,
+            aiProbability: r.aiProbability,
+            humanProbability: r.humanProbability,
             verdict: r.label === 'ai' ? 'generated' : 'human',
+            label: r.label,
             sentences: [],
             source: 'rudra' as const,
             model: r.model,
             elapsedMs: r.elapsedMs,
-            humanProbability: r.humanProbability,
           },
         });
       } catch {
