@@ -356,7 +356,7 @@ export async function POST(request: NextRequest) {
         }
       }
     }
-    let finalDetection = detectAI(finalText);
+    const finalDetection = detectAI(finalText);
     const confidenceReport = buildConfidenceReport(finalDetection.score);
     const runtimeModelScore = await scoreHumanLikeness(finalText);
     const semanticFidelity = assessSemanticFidelity(text, finalText);
