@@ -27,22 +27,27 @@ Transform AI-generated text into natural, human-like writing using multi-pass re
 
 ## Rudra's Free Usage Model
 
-Starting with v2.3, the hosted app ships with a free, pre-configured model — **no API key needed from you.** Just paste text and click Humanize.
+Starting with v2.4, the hosted app ships with a free, pre-configured model — **no API key needed from you.** Just paste text and click Humanize.
 
-- **Humanizer**: `WhiteRoomProdigy/amicus-humanizer-v1-onnx` (T5-base, 60M params, ONNX INT8) — purpose-built for AI-text humanization.
+- **Humanizer**: `gemma3:4b` via Ollama with a 7-rule humanize system prompt — faithful rewrites that preserve length, facts, names, numbers, and structure while disrupting AI fingerprints.
 - **AI Detector**: `fakespot-ai/roberta-base-ai-text-detection-v1` (RoBERTa-base, 125M params) — runs automatically after every humanize and shows the verdict inline below the result.
-- **Hosting**: maintainer's free Oracle Cloud ARM (Ampere A1) VPS. Sub-1B models keep CPU inference fast (≈1s humanize, ≈70ms detect) and free-tier-friendly.
+- **Hosting**: maintainer's free Oracle Cloud ARM (Ampere A1) VPS. Latency: ~25s for a 100-word humanize (ARM CPU), ~70ms detect.
 - **Privacy**: your text goes straight from the Vercel frontend to the Oracle VPS over HTTPS. The API keys live in Vercel env vars and never reach the browser.
 
 Want to use it on your own deployment? Set these three env vars (see `.env.example`):
 
 ```
-RUDRA_API_BASE_URL=https://129.159.229.170
+RUDRA_API_BASE_URL=https://129-159-229-170.sslip.io
 RUDRA_HUMANIZER_API_KEY=...
 RUDRA_DETECTOR_API_KEY=...
 ```
 
 Prefer a different default? Set `NEXT_PUBLIC_DEFAULT_PROVIDER=gemini` (or any other provider id).
+
+> **Backend swap note (v2.4.0 → v2.4.1):** the original `amicus-humanizer-v1-onnx` (T5, 60M) produced lossy,
+> repetitive summaries — 84 words in → 19 words out. The current backend uses Ollama `gemma3:4b`
+> which preserves input length and produces natural, faithful rewrites. The detector score
+> still drops to single-digit AI probability on the output.
 
 ---
 

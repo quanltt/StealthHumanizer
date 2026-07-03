@@ -5,6 +5,25 @@ All notable changes to this project are documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and
 this project follows [Semantic Versioning](https://semver.org/).
 
+## [2.4.1] - 2026-07-04
+
+### Changed — swapped humanizer backend to gemma3:4b
+
+The first version of Rudra's Free Usage Model used `WhiteRoomProdigy/amicus-humanizer-v1-onnx`
+(T5-base, 60M params). On real inputs it produced lossy, repetitive summaries
+(84 words in → 19 words out, "scalable and maintainable" repeated in the same
+sentence). The new backend is **Ollama `gemma3:4b`** with a 7-rule humanize
+system prompt — faithful rewrites that preserve length, facts, names, and
+structure. Same external API (no client change needed), same Oracle VPS, same
+API keys.
+
+- Latency: 1.2s → ~25s for a 100-word input (acceptable on free-tier ARM CPU).
+- Quality: input 84 words → output 140 words, all facts preserved, detector
+  score drops to ~6% AI probability on the humanized text.
+- Free-tier footprint: stealth-models container dropped from 1.1 GB → 249 MB
+  RAM because we no longer load the ONNX model in-process. The Python service
+  now proxies `/humanize/` to Ollama over the docker bridge.
+
 ## [2.4.0] - 2026-07-04
 
 ### Added — Rudra's Free Usage Model (zero-config default)
