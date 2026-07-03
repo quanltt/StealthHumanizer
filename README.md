@@ -27,11 +27,12 @@ Transform AI-generated text into natural, human-like writing using multi-pass re
 
 ## Rudra's Free Usage Model
 
-Starting with v2.4, the hosted app ships with a free, pre-configured model — **no API key needed from you.** Just paste text and click Humanize.
+Starting with v2.4, the hosted app ships with a free, pre-configured model — **no API key needed from you.** Just paste text and click Humanize. **Auto-routing by input length** picks the best backend:
 
-- **Humanizer**: `gemma3:4b` via Ollama with a 7-rule humanize system prompt — faithful rewrites that preserve length, facts, names, numbers, and structure while disrupting AI fingerprints.
+- **Short text (≤150 words)** → `cive202/humanize-ai-text-bart-large` (BART, 406M, sub-1B). Purpose-built humanizer backed by a peer-reviewed paper (Paneru 2026, BERTScore 0.924). Latency ~5–12s. Preserves length and facts on paragraphs, abstracts, social posts.
+- **Long text (>150 words)** → `gemma3:4b` via Ollama (4B params). The only faithful option for full essays, LORs, dissertations. Latency ~25–90s on free ARM CPU. (No sub-1B model can faithfully rewrite long form — every alternative tested either summarized, hallucinated fake facts, or degraded into repetition.)
 - **AI Detector**: `fakespot-ai/roberta-base-ai-text-detection-v1` (RoBERTa-base, 125M params) — runs automatically after every humanize and shows the verdict inline below the result.
-- **Hosting**: maintainer's free Oracle Cloud ARM (Ampere A1) VPS. Latency: ~25s for a 100-word humanize (ARM CPU), ~70ms detect.
+- **Hosting**: maintainer's free Oracle Cloud ARM (Ampere A1) VPS. ~70ms detect.
 - **Privacy**: your text goes straight from the Vercel frontend to the Oracle VPS over HTTPS. The API keys live in Vercel env vars and never reach the browser.
 
 Want to use it on your own deployment? Set these three env vars (see `.env.example`):
@@ -44,10 +45,10 @@ RUDRA_DETECTOR_API_KEY=...
 
 Prefer a different default? Set `NEXT_PUBLIC_DEFAULT_PROVIDER=gemini` (or any other provider id).
 
-> **Backend swap note (v2.4.0 → v2.4.1):** the original `amicus-humanizer-v1-onnx` (T5, 60M) produced lossy,
-> repetitive summaries — 84 words in → 19 words out. The current backend uses Ollama `gemma3:4b`
-> which preserves input length and produces natural, faithful rewrites. The detector score
-> still drops to single-digit AI probability on the output.
+> **Backend swap note (v2.4.0 → v2.4.1 → v2.4.2):**
+> - v2.4.0 used `amicus-humanizer-v1-onnx` (T5, 60M) — produced lossy 19-word summaries. Swapped out.
+> - v2.4.1 used `gemma3:4b` for everything — slow on short text.
+> - v2.4.2 auto-routes: `cive202/humanize-ai-text-bart-large` (406M sub-1B specialized humanizer) for ≤150 words, `gemma3:4b` for long text. The only honest mapping of "fast sub-1B where safe, faithful larger model where required."
 
 ---
 

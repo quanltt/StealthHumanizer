@@ -5,6 +5,32 @@ All notable changes to this project are documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and
 this project follows [Semantic Versioning](https://semver.org/).
 
+## [2.4.2] - 2026-07-04
+
+### Changed — sub-1B specialized humanizer for short text
+
+After a deeper HuggingFace audit + on-VPS testing of every candidate, swapped
+the short-text backend from Qwen2.5-0.5B (general instruct) to
+**`cive202/humanize-ai-text-bart-large`** (BART, 406M params).
+
+- Peer-reviewed paper (Paneru 2026, "Make it Sound like Human")
+- BERTScore 0.924 on test set — measurable fidelity, not marketing
+- 25,140 training pairs with document-disjoint splits
+- MIT license, updated April 2026
+- The ONLY sub-1B specialized humanizer that ACTUALLY preserves length + facts
+  on real inputs (verified on 84-word + 319-word test cases)
+
+Auto-routing by input word count:
+- ≤150 words → cive202 BART (sub-1B, 5–12s, faithful)
+- >150 words → Ollama gemma3:4b (4B, 25–90s, only faithful option for long form)
+
+Why the swap: Qwen2.5-0.5B worked on short text but hallucinated fake awards
+and publications on long inputs ("Euratom Medal of the Russian Federation",
+invented grants, etc.). Ateeqq/Text-Rewriter-Paraphraser produced garbage
+tokens. amicus summarized. No sub-1B model is faithful on long text — cive202
+BART-large is the only one that works on short, gemma3:4b is the only one
+that works on long. Auto-routing was the honest compromise.
+
 ## [2.4.1] - 2026-07-04
 
 ### Changed — swapped humanizer backend to gemma3:4b
