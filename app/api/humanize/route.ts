@@ -391,6 +391,7 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ success: true, ...responsePayload });
   } catch (err: unknown) {
     const message = err instanceof Error ? err.message : 'Internal error';
-    return NextResponse.json({ success: false, error: process.env.NODE_ENV === 'development' ? message : 'Internal error' }, { status: 500 });
+    const stack = err instanceof Error ? err.stack : undefined;
+    return NextResponse.json({ success: false, error: message, stack: process.env.VERCEL_ENV === 'production' ? undefined : stack }, { status: 500 });
   }
 }
