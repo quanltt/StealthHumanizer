@@ -1,13 +1,7 @@
-title: StealthHumanizer Docs
-description: Documentation for StealthHumanizer
-theme: minima
+title: StealthHumanizer
+description: "Free open-source AI text humanizer — redirecting to stealthhumanizer.vercel.app"
+url: "https://stealthhumanizer.vercel.app"
 markdown: kramdown
-plugins:
-  - jekyll-seo-tag
-header_pages:
-  - getting-started.md
-  - configuration.md
-  - api-reference.md
-  - examples.md
-  - faq.md
-  - contributing.md
+theme: null
+gems: []
+keep_files: ["index.html", "robots.txt", "sitemap.xml", "og-image.png"]
