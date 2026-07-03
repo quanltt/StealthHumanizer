@@ -23,6 +23,10 @@ const STYLES: readonly StylePreset[] = ['humanize', 'academic', 'casual', 'profe
 const PROVIDER_IDS = PROVIDERS.map((provider) => provider.id);
 
 const API_KEY_ENV: Record<ModelProvider, string> = {
+  // "Rudra's Free Usage Model" authenticates server-side (Vercel env var) —
+  // there's no client-facing API key, and the CLI doesn't proxy to it. Empty
+  // string keeps the Record type happy without affecting runtime behavior.
+  'rudra-free': '',
   gemini: 'GEMINI_API_KEY',
   openai: 'OPENAI_API_KEY',
   claude: 'ANTHROPIC_API_KEY',
