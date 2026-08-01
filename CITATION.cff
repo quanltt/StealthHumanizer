@@ -1,0 +1,21 @@
+cff-version: 1.2.0
+title: "StealthHumanizer — Free AI Text Humanizer"
+message: "If you use this software, please cite it as below."
+type: software
+authors:
+  - given-names: Rudra
+    family-names: Sarker
+    affiliation: "Shahjalal University of Science and Technology, Bangladesh"
+    orcid: "https://orcid.org/0009-0001-4545-0932"
+repository-code: "https://github.com/rudra496/StealthHumanizer"
+url: "https://stealthhumanizer.vercel.app/"
+abstract: "Free open-source AI text humanizer with 35 providers, 4 rewrite levels, and 16+ language support. No login required."
+keywords:
+  - AI
+  - text-humanizer
+  - NLP
+  - education
+  - open-source
+license: MIT
+version: "2.2.0"
+date-released: "2026-06-01"
