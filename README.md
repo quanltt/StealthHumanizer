@@ -68,7 +68,7 @@ See the [full changelog](./CHANGELOG.md#230---2026-06-28) for details.
 
 ## Why StealthHumanizer?
 
-AI detectors (GPTZero, Originality.ai, Turnitin) catch AI text through statistical fingerprints:
+AI detectors (GPTZero, Originality.ai, CopyLeaks) catch AI text through statistical fingerprints:
 - **Low perplexity** — predictable, boring word choices
 - **Low burstiness** — uniform sentence lengths
 - **AI-typical phrases** — "furthermore," "it is important to note," "delve into"
@@ -422,7 +422,7 @@ Read [CONTRIBUTING.md](./CONTRIBUTING.md) for full guidelines.
 
 If you're searching for any of these, **StealthHumanizer is the free, open-source alternative**:
 
-QuillBot alternative, Undetectable.ai alternative, StealthWriter alternative, Hix Bypass alternative, Bypass AI detection, AI humanizer free, Humanize AI text free, Free AI detector bypass, Open source AI humanizer, GPTZero bypass, Turnitin bypass, AI text rewriter free, Make AI text undetectable, AI to human text converter
+QuillBot alternative, Undetectable.ai alternative, StealthWriter alternative, Hix Bypass alternative, Bypass AI detection, AI humanizer free, Humanize AI text free, Free AI detector bypass, Open source AI humanizer, GPTZero bypass, AI text rewriter free, Make AI text undetectable, AI to human text converter
 
 ---
 

@@ -4,16 +4,16 @@ import './globals.css';
 const SITE_URL = 'https://stealthhumanizer.vercel.app';
 
 export const metadata: Metadata = {
-  title: 'StealthHumanizer — Free AI Text Humanizer | Bypass GPTZero & Turnitin | 35 Providers',
+  title: 'StealthHumanizer — Free AI Text Humanizer | Bypass GPTZero & AI Detectors | 35 Providers',
   description:
-    'Transform AI-generated text into natural, human-like writing. Free, open-source, no login required. Bypass GPTZero, Turnitin, and AI detectors with 35 AI providers, 4 rewrite levels, multi-pass ninja mode, grammar check, and 16+ languages.',
+    'Transform AI-generated text into natural, human-like writing. Free, open-source, no login required. Bypass GPTZero and AI detectors with 35 AI providers, 4 rewrite levels, multi-pass ninja mode, grammar check, and 16+ languages.',
   keywords: [
     'AI humanizer', 'text humanizer', 'humanize AI text', 'AI text converter',
     'bypass AI detection', 'undetectable AI', 'AI detector bypass', 'humanize ChatGPT',
     'rewrite AI text', 'AI to human text', 'free AI humanizer', 'open source humanizer',
     'paraphrase AI text', 'humanize AI writing', 'stealth writer', 'QuillBot alternative',
     'Undetectable.ai alternative', 'StealthWriter alternative', 'GPTZero bypass',
-    'Turnitin bypass', 'humanize AI essay', 'AI writing tool', 'text rewriter',
+    'humanize AI essay', 'AI writing tool', 'text rewriter',
     'AI content humanizer', 'bypass GPTZero', 'humanize text free', 'AI detector free',
     'ninja mode humanizer', 'multi-language AI humanizer', 'privacy AI tool',
   ],
@@ -23,9 +23,9 @@ export const metadata: Metadata = {
   metadataBase: new URL(SITE_URL),
   alternates: { canonical: SITE_URL },
   openGraph: {
-    title: 'StealthHumanizer — Free AI Text Humanizer | Bypass GPTZero & Turnitin',
+    title: 'StealthHumanizer — Free AI Text Humanizer | Bypass GPTZero & AI Detectors',
     description:
-      'Transform AI text into natural writing. Bypass GPTZero, Turnitin & AI detectors. 35 providers, ninja mode, grammar check, 16+ languages. 100% free & open-source. No login.',
+      'Transform AI text into natural writing. Bypass GPTZero & AI detectors. 35 providers, ninja mode, grammar check, 16+ languages. 100% free & open-source. No login.',
     url: SITE_URL,
     siteName: 'StealthHumanizer',
     type: 'website',
@@ -35,15 +35,15 @@ export const metadata: Metadata = {
         url: `${SITE_URL}/og-image.png`,
         width: 1200,
         height: 630,
-        alt: 'StealthHumanizer — Free AI Text Humanizer | Bypass GPTZero & Turnitin',
+        alt: 'StealthHumanizer — Free AI Text Humanizer | Bypass GPTZero & AI Detectors',
       },
     ],
   },
   twitter: {
     card: 'summary_large_image',
-    title: 'StealthHumanizer — Free AI Text Humanizer | Bypass GPTZero & Turnitin',
+    title: 'StealthHumanizer — Free AI Text Humanizer | Bypass GPTZero & AI Detectors',
     description:
-      'Transform AI text into natural writing. 35 providers, ninja mode, 100% free. Bypass GPTZero & Turnitin. No login required.',
+      'Transform AI text into natural writing. 35 providers, ninja mode, 100% free. Bypass GPTZero & AI detectors. No login required.',
     images: [`${SITE_URL}/og-image.png`],
     creator: '@rudra496',
   },
@@ -68,7 +68,7 @@ const jsonLd = {
   name: 'StealthHumanizer',
   url: SITE_URL,
   description:
-    'Free open-source AI text humanizer. Transform AI-generated text into natural, human-like writing. Bypass GPTZero, Turnitin, and AI detectors with 35 AI providers, 4 rewrite levels, and multi-pass ninja mode.',
+    'Free open-source AI text humanizer. Transform AI-generated text into natural, human-like writing. Bypass GPTZero and AI detectors with 35 AI providers, 4 rewrite levels, and multi-pass ninja mode.',
   applicationCategory: 'UtilitiesApplication',
   operatingSystem: 'Web',
   offers: { '@type': 'Offer', price: '0', priceCurrency: 'USD' },
@@ -113,7 +113,7 @@ const faqJsonLd = {
       name: 'Does it work with GPTZero?',
       acceptedAnswer: {
         '@type': 'Answer',
-        text: 'Yes. StealthHumanizer uses a 4-layer pipeline — LLM rewrite, non-LLM post-processing (synonym swaps, collocation replacements), multi-model chaining, and final polish — to disrupt AI detection signals like low perplexity, low burstiness, and AI-typical phrases. It is effective against GPTZero, Turnitin, and other AI detectors.',
+        text: 'Yes. StealthHumanizer uses a 4-layer pipeline — LLM rewrite, non-LLM post-processing (synonym swaps, collocation replacements), multi-model chaining, and final polish — to disrupt AI detection signals like low perplexity, low burstiness, and AI-typical phrases. It is effective against GPTZero and major AI detectors.',
       },
     },
     {
