@@ -2,10 +2,21 @@
 
 import { useState } from 'react';
 import { Layers, Plus, Trash2, Zap, Copy, AlertTriangle, CheckCircle, Loader2 } from 'lucide-react';
-import { getApiKeys } from '@/lib/storage';
+import { getApiKeys, getProviderModels, getPreferredDomain, setPreferredDomain } from '@/lib/storage';
 import { WEB_PROVIDERS as PROVIDERS } from '@/lib/providers';
 import { ModelProvider } from '@/lib/types';
 import { BASE_PATH } from '@/lib/base-path';
+import corpusData from '@/public/corpus-style-model.json';
+
+type DomainId = keyof typeof corpusData.byDomain | 'default';
+
+const DOMAINS: { id: DomainId; name: string }[] = [
+  { id: 'default', name: `Auto / All domains (${corpusData.paperCount.toLocaleString()})` },
+  ...(Object.keys(corpusData.byDomain) as (keyof typeof corpusData.byDomain)[]).map((key) => ({
+    id: key,
+    name: `${key} (${corpusData.byDomain[key].paperCount.toLocaleString()})`,
+  })),
+];
 
 interface BatchItem {
   id: string;
@@ -37,6 +48,8 @@ export default function BatchHumanizer({ showToast }: BatchHumanizerProps) {
   const [itemStatuses, setItemStatuses] = useState<Record<string, ItemStatus>>({});
   const [model, setModel] = useState<ModelProvider>(PROVIDERS[0]?.id ?? 'gemini');
   const [level, setLevel] = useState<'light' | 'medium' | 'aggressive' | 'ninja'>('medium');
+  const [domain, setDomain] = useState<DomainId>(() => (typeof window !== 'undefined' ? (getPreferredDomain() as DomainId) : 'default'));
+  const handleDomainChange = (d: DomainId) => { setDomain(d); setPreferredDomain(d); };
 
   const addItem = () => {
     if (items.length >= 20) { showToast('warning', 'Maximum 20 items allowed.'); return; }
@@ -104,6 +117,8 @@ export default function BatchHumanizer({ showToast }: BatchHumanizerProps) {
           level,
           model,
           apiKey,
+          domain: domain === 'default' ? undefined : domain,
+          providerModel: getProviderModels()[model],
         }),
       });
 
@@ -183,6 +198,8 @@ export default function BatchHumanizer({ showToast }: BatchHumanizerProps) {
           level,
           model,
           apiKey,
+          domain: domain === 'default' ? undefined : domain,
+          providerModel: getProviderModels()[model],
         }),
       });
 
@@ -259,6 +276,14 @@ export default function BatchHumanizer({ showToast }: BatchHumanizerProps) {
             <option value="medium">✨ Medium</option>
             <option value="aggressive">🔥 Aggressive</option>
             <option value="ninja">🥷 Ninja</option>
+          </select>
+          <select
+            value={domain}
+            onChange={e => handleDomainChange(e.target.value as DomainId)}
+            title="Corpus style domain"
+            className="px-3 py-2 rounded-lg bg-dark-800 border border-dark-700/50 text-dark-200 text-sm focus:outline-none focus:ring-2 focus:ring-accent-500/50"
+          >
+            {DOMAINS.map(d => <option key={d.id} value={d.id}>{d.name}</option>)}
           </select>
         </div>
       </div>

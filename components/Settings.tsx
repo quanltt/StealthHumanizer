@@ -3,7 +3,7 @@
 import { useState, useEffect } from 'react';
 import { Settings as SettingsIcon, Key, Eye, EyeOff, ExternalLink, Shield, Check, X, Zap, Star, RotateCcw } from 'lucide-react';
 import { WEB_PROVIDERS as PROVIDERS, getProvider, testApiKey } from '@/lib/providers';
-import { getApiKeys, setApiKeys, clearApiKeys } from '@/lib/storage';
+import { getApiKeys, setApiKeys, clearApiKeys, getProviderModels, setProviderModel } from '@/lib/storage';
 import { ModelProvider } from '@/lib/types';
 
 interface SettingsProps {
@@ -19,8 +19,15 @@ export default function Settings({ showToast }: SettingsProps) {
   const [quickTesting, setQuickTesting] = useState(false);
   const [quickStatus, setQuickStatus] = useState<'idle' | 'testing' | 'valid' | 'invalid'>('idle');
   const [testAllStatus, setTestAllStatus] = useState<Record<string, 'valid' | 'invalid' | 'testing'>>({});
+  const [providerModels, setProviderModels] = useState<Record<string, string>>({});
 
-  useEffect(() => { setKeys(getApiKeys()); }, []);
+  useEffect(() => { setKeys(getApiKeys()); setProviderModels(getProviderModels()); }, []);
+
+  const handleModelSelect = (providerId: string, model: string) => {
+    const next = { ...providerModels, [providerId]: model };
+    setProviderModels(next);
+    setProviderModel(providerId, model);
+  };
 
   const handleSave = (id: string, key: string) => {
     // Trim whitespace and validate the key is not empty
@@ -302,11 +309,29 @@ export default function Settings({ showToast }: SettingsProps) {
             <div>
               <label className="block text-sm font-medium text-dark-300 mb-2">Model</label>
               <div className="flex flex-wrap gap-2">
-                {current.models.map(m => (
-                  <span key={m} className="px-3 py-1 rounded-lg bg-dark-700/50 text-dark-300 text-xs">{m}</span>
-                ))}
+                {current.models.map(m => {
+                  const active = (providerModels[current.id] || current.defaultModel) === m;
+                  return (
+                    <button
+                      key={m}
+                      type="button"
+                      onClick={() => handleModelSelect(current.id, m)}
+                      className={`px-3 py-1 rounded-lg text-xs transition-colors ${
+                        active
+                          ? 'bg-accent-500/20 text-accent-300 ring-1 ring-accent-500/50'
+                          : 'bg-dark-700/50 text-dark-300 hover:bg-dark-700'
+                      }`}
+                    >
+                      {m}
+                    </button>
+                  );
+                })}
               </div>
-              <p className="text-xs text-dark-500 mt-1">Default: {current.defaultModel}</p>
+              <p className="text-xs text-dark-500 mt-1">
+                {providerModels[current.id] && providerModels[current.id] !== current.defaultModel
+                  ? `Using: ${providerModels[current.id]} (default: ${current.defaultModel})`
+                  : `Default: ${current.defaultModel}`}
+              </p>
             </div>
           )}
 

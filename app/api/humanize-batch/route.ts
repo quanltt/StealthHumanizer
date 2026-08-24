@@ -1,11 +1,13 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { detectAI } from '@/lib/detector';
 import { postprocess } from '@/lib/postprocess';
-import { getSystemPrompt } from '@/lib/prompts';
+import { getSystemPrompt, getCorpusAwareSystemPrompt } from '@/lib/prompts';
 import { generateWithProvider } from '@/lib/server/providers-runtime';
-import { isCliOnlyProvider } from '@/lib/providers';
+import { getProvider, isCliOnlyProvider } from '@/lib/providers';
 import { asyncMapConcurrent } from '@/lib/batch';
 import { checkRateLimit } from '@/lib/rate-limit';
+import { loadStyleModelAsync, loadStyleModel, hasStyleModel } from '@/lib/style-model';
+import { calibrateWithCorpus } from '@/lib/detector';
 
 const MAX_BATCH_COUNT = 20;
 const MAX_TEXT_LENGTH = 5000;
@@ -29,7 +31,7 @@ export async function POST(request: NextRequest) {
     }
 
     const body = await request.json();
-    const { texts, style = 'humanize', model, apiKey } = body;
+    const { texts, style = 'humanize', model, apiKey, domain, providerModel } = body;
 
     if (!model || !apiKey) {
       return NextResponse.json({ success: false, error: 'Missing required fields: model and apiKey' }, { status: 400 });
@@ -47,7 +49,22 @@ export async function POST(request: NextRequest) {
     }
 
     const params = { temperature: 0.5, topP: 0.90 };
-    const systemPrompt = getSystemPrompt(style);
+
+    // Load corpus style model
+    await loadStyleModelAsync();
+    const useCorpus = hasStyleModel();
+
+    // Calibrate detector with corpus
+    if (useCorpus) {
+      const styleModel = loadStyleModel();
+      if (styleModel) calibrateWithCorpus(styleModel);
+    }
+
+    const systemPrompt = useCorpus
+      ? getCorpusAwareSystemPrompt(style, undefined, domain || undefined, undefined)
+      : getSystemPrompt(style);
+    const providerInfo = getProvider(model);
+    const modelId = providerModel || providerInfo?.defaultModel;
 
     const results = await asyncMapConcurrent(
       texts,
@@ -60,6 +77,7 @@ export async function POST(request: NextRequest) {
         }
         try {
           const raw = await generateWithProvider(model, apiKey, systemPrompt, text.trim(), {
+            model: modelId,
             temperature: params.temperature,
             topP: params.topP,
           });
@@ -77,6 +95,7 @@ export async function POST(request: NextRequest) {
     const successCount = results.filter(r => r.error === null).length;
     return NextResponse.json({ success: true, data: { results, count: results.length, successCount } });
   } catch (err: unknown) {
+    console.error(err);
     const message = err instanceof Error ? err.message : 'Internal error';
     return NextResponse.json({ success: false, error: process.env.NODE_ENV === 'development' ? message : 'Internal error' }, { status: 500 });
   }

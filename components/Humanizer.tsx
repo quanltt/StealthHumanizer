@@ -11,7 +11,11 @@ import { StylePreset, HumanizationResult, ModelProvider, SentenceDetectionResult
 import { SAMPLE_AI_TEXT, SAMPLE_TECHNICAL_TEXT } from '@/lib/prompts';
 import { detectAI } from '@/lib/detector';
 import { getReadabilityLabel } from '@/lib/readability';
-import { countWords, downloadAsTxt, downloadAsDocx, downloadAsMarkdown, getApiKeys } from '@/lib/storage';
+import {
+  countWords, downloadAsTxt, downloadAsDocx, downloadAsMarkdown, getApiKeys,
+  getProviderModels, getPreferredDomain, setPreferredDomain,
+} from '@/lib/storage';
+import corpusData from '@/public/corpus-style-model.json';
 import { buildSentenceResults } from '@/lib/text-utils';
 import { WEB_PROVIDERS as PROVIDERS } from '@/lib/providers';
 import { assessSemanticFidelity } from '@/lib/semantic-fidelity';
@@ -26,6 +30,18 @@ const ComparisonChart = dynamic(
   () => import('./ComparisonChart'),
   { ssr: false, loading: () => <div className="h-[220px] bg-dark-800/50 rounded-xl animate-pulse" /> },
 );
+
+// DomainId is a union of the actual domain keys present in the corpus JSON.
+type DomainId = keyof typeof corpusData.byDomain | 'default';
+
+// Built from the same corpus JSON at compile time so it always stays in sync.
+const DOMAINS: { id: DomainId; name: string }[] = [
+  { id: 'default', name: `Auto / All domains (${corpusData.paperCount.toLocaleString()})` },
+  ...(Object.keys(corpusData.byDomain) as (keyof typeof corpusData.byDomain)[]).map((key) => ({
+    id: key,
+    name: `${key} (${corpusData.byDomain[key].paperCount.toLocaleString()})`,
+  })),
+];
 
 const STYLES: { id: StylePreset; name: string; icon: string }[] = [
   { id: 'stealth', name: 'Stealth', icon: '🥷' },
@@ -140,6 +156,11 @@ export default function Humanizer({ showToast, onGoToSettings, isFirstVisit }: H
   // Roadmap features
   const [privacyMode, setPrivacyMode] = useState(false);
 
+  // Corpus domain for style calibration — 'default' means no domain filter.
+  const [domain, setDomain] = useState<DomainId>('default');
+  useEffect(() => { setDomain(getPreferredDomain() as DomainId); }, []);
+  const handleDomainChange = (d: DomainId) => { setDomain(d); setPreferredDomain(d); };
+
   const wordCount = countWords(inputText);
   const hasAnyApiKey = Object.values(getApiKeys()).some(v => v && v.trim().length > 0);
 
@@ -195,7 +216,8 @@ export default function Humanizer({ showToast, onGoToSettings, isFirstVisit }: H
         : localProviders.includes(providerId)
           ? (PROVIDERS.find(p => p.id === providerId)?.placeholder || 'ollama')
           : undefined);
-    return { providerId, apiKey };
+    const providerModel = getProviderModels()[providerId];
+    return { providerId, apiKey, providerModel };
   };
 
   function buildLocalPrivacyResult(startedAt: number): HumanizationResult {
@@ -252,7 +274,7 @@ export default function Humanizer({ showToast, onGoToSettings, isFirstVisit }: H
       return;
     }
 
-    const { providerId, apiKey } = getApiCredentials();
+    const { providerId, apiKey, providerModel } = getApiCredentials();
     if (!apiKey && providerId !== 'rudra-free') { showToast('warning', 'Please add an API key in Settings first, pick Rudra’s Free Usage Model, or enable Privacy Mode for an offline local rewrite.'); return; }
 
     setLoading(true);
@@ -280,9 +302,11 @@ export default function Humanizer({ showToast, onGoToSettings, isFirstVisit }: H
           postprocess: enablePostprocess,
           chainModels: enableChain ? selectedChainModels : [],
           apiKeys: allApiKeys,
+          domain: domain === 'default' ? undefined : domain,
+          providerModel,
         }),
       });
-      if (!response.ok) { const err = await response.json().catch(() => ({})); throw new Error(err.error || 'Failed'); }
+      if (!response.ok) { const err = await response.json().catch(() => ({})); console.error(err); throw new Error(err.error || 'Failed'); }
       const data: HumanizationResult & { success?: boolean } = await response.json();
       setResult(data);
       saveHumanizationVersion(data);
@@ -448,7 +472,7 @@ export default function Humanizer({ showToast, onGoToSettings, isFirstVisit }: H
   // Re-humanize flagged sentences (manual trigger)
   const handleRehumanize = async () => {
     if (!result) return;
-    const { providerId, apiKey } = getApiCredentials();
+    const { providerId, apiKey, providerModel } = getApiCredentials();
     if (!apiKey) { showToast('warning', 'No API key configured'); return; }
 
     setRehumanizing(true);
@@ -472,6 +496,7 @@ export default function Humanizer({ showToast, onGoToSettings, isFirstVisit }: H
           body: JSON.stringify({
             flaggedSentences: flagged, style, 
             model: providerId, apiKey, fullText: currentFullText,
+            providerModel,
           }),
         });
         if (!resp.ok) break;
@@ -791,6 +816,19 @@ export default function Humanizer({ showToast, onGoToSettings, isFirstVisit }: H
                   <select value={language} onChange={e => setLanguage(e.target.value)}
                     className="w-full px-3 py-2 bg-dark-800 border border-dark-700/50 rounded-lg text-white text-sm focus:outline-none focus:ring-2 focus:ring-accent-500/50">
                     {LANGUAGES.map(l => <option key={l.code} value={l.code}>{l.name}</option>)}
+                  </select>
+                </div>
+                <div>
+                  <label className="flex items-center gap-2 text-sm font-medium text-dark-300 mb-2">
+                    <Languages className="w-4 h-4 text-accent-400" /> Domain
+                  </label>
+                  <select
+                    value={domain}
+                    onChange={e => handleDomainChange(e.target.value as DomainId)}
+                    className="w-full px-3 py-2 bg-dark-800 border border-dark-700/50 rounded-lg text-white text-sm focus:outline-none focus:ring-2 focus:ring-accent-500/50">
+                    {DOMAINS.map(d => (
+                      <option key={d.id} value={d.id}>{d.name}</option>
+                    ))}
                   </select>
                 </div>
                 <div>

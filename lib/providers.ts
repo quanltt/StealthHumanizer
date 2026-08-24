@@ -74,10 +74,16 @@ function sanitizeHuggingFaceModel(model: string): string {
   return trimmed;
 }
 
+// Default request timeout for provider calls. Configurable via HUMANIZE_TIMEOUT_MS
+// for self-hosted deployments running local models (Ollama/LM Studio/vLLM), which
+// can take much longer than hosted APIs. Falls back to 120s (Vercel's serverless
+// maxDuration for the humanize route is 120s, see app/api/humanize/route.ts).
+const DEFAULT_TIMEOUT_MS = parseInt(process.env.HUMANIZE_TIMEOUT_MS ?? '120000', 10);
+
 export async function fetchWithRetry(
   rawUrl: string,
   options: RequestInit = {},
-  timeoutMs: number = 30_000,
+  timeoutMs: number = DEFAULT_TIMEOUT_MS,
   maxRetries: number = 1,
 ): Promise<Response> {
   const url = sanitizeUrl(rawUrl);
@@ -99,6 +105,7 @@ export async function fetchWithRetry(
       }
       return response;
     } catch (err: unknown) {
+      if (err instanceof Error) console.error(err);
       clearTimeout(timeout);
       if (err instanceof Error && err.name === 'AbortError') {
         lastError = new Error(`Request timed out after ${timeoutMs}ms`);
@@ -642,6 +649,15 @@ interface GenerationOptions {
   model?: string;
 }
 
+// OpenAI's newer "reasoning" models (o1, o3, o4, gpt-5, ...) reject the legacy
+// `max_tokens` param and require `max_completion_tokens` instead. Only applies
+// to OpenAI's own endpoint — other OpenAI-compatible providers (Groq, Together,
+// OpenRouter, DeepInfra, Cerebras, ...) still expect `max_tokens`.
+function requiresMaxCompletionTokens(apiUrl: string, model: string): boolean {
+  if (!apiUrl.includes('api.openai.com')) return false;
+  return /^(o1|o3|o4|gpt-5)/i.test(model.trim());
+}
+
 // Generic OpenAI-compatible fetch (used by Groq, Together, OpenRouter, DeepInfra, Cerebras)
 async function openAICompatibleGenerate(
   apiUrl: string,
@@ -651,6 +667,7 @@ async function openAICompatibleGenerate(
   model: string,
   options: GenerationOptions = {}
 ): Promise<string> {
+  const useCompletionTokens = requiresMaxCompletionTokens(apiUrl, model);
   const response = await fetchWithRetry(apiUrl, {
     method: 'POST',
     headers: {
@@ -666,7 +683,9 @@ async function openAICompatibleGenerate(
       ],
       temperature: options.temperature ?? 0.9,
       top_p: options.topP ?? 0.95,
-      max_tokens: options.maxTokens ?? 4096,
+      ...(useCompletionTokens
+        ? { max_completion_tokens: options.maxTokens ?? 4096 }
+        : { max_tokens: options.maxTokens ?? 4096 }),
     }),
   });
 

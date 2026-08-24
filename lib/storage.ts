@@ -6,6 +6,8 @@ const KEYS = {
   HISTORY: 'stealthhumanizer_history',
   THEME: 'stealthhumanizer_theme',
   VISITED: 'stealthhumanizer_visited',
+  PROVIDER_MODELS: 'stealthhumanizer_provider_models',
+  DOMAIN: 'stealthhumanizer_domain',
 };
 
 function encode(data: string): string {
@@ -41,6 +43,37 @@ export function setApiKeys(keys: ApiKeys): void {
 export function clearApiKeys(): void {
   if (typeof window === 'undefined') return;
   localStorage.removeItem(KEYS.API_KEYS);
+}
+
+// Per-provider model override — lets a user pick a specific model (e.g.
+// "gpt-4.1-mini" instead of the provider's defaultModel) without touching Settings.
+export function getProviderModels(): Record<string, string> {
+  if (typeof window === 'undefined') return {};
+  try {
+    const stored = localStorage.getItem(KEYS.PROVIDER_MODELS);
+    return stored ? JSON.parse(stored) : {};
+  } catch {
+    return {};
+  }
+}
+
+export function setProviderModel(providerId: string, model: string | undefined): void {
+  if (typeof window === 'undefined') return;
+  const current = getProviderModels();
+  if (model) current[providerId] = model;
+  else delete current[providerId];
+  localStorage.setItem(KEYS.PROVIDER_MODELS, JSON.stringify(current));
+}
+
+// Preferred corpus domain for corpus-aware style calibration ('default' = no domain filter).
+export function getPreferredDomain(): string {
+  if (typeof window === 'undefined') return 'default';
+  return localStorage.getItem(KEYS.DOMAIN) || 'default';
+}
+
+export function setPreferredDomain(domain: string): void {
+  if (typeof window === 'undefined') return;
+  localStorage.setItem(KEYS.DOMAIN, domain);
 }
 
 // History

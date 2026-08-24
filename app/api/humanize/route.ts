@@ -92,6 +92,8 @@ export async function POST(request: NextRequest) {
       freezeWords = '',
       synonymIntensity = 15,
       intensity: requestIntensity,
+      domain,
+      providerModel,
     } = await request.json();
 
     // Resolve intensity: explicit request wins; else 'stealth' style defaults to
@@ -150,10 +152,10 @@ export async function POST(request: NextRequest) {
         ? { temperature: 0.8, topP: 0.95 }
         : { temperature: 0.5, topP: 0.90 };
     const systemPrompt = useCorpus
-      ? getCorpusAwareSystemPrompt(style, writingSample, undefined, language, freezeWords)
+      ? getCorpusAwareSystemPrompt(style, writingSample, domain || undefined, language, freezeWords)
       : getSystemPrompt(style, writingSample, language, freezeWords);
     const providerInfo = getProvider(model);
-    const modelId = providerInfo?.defaultModel || model;
+    const modelId = providerModel || providerInfo?.defaultModel || model;
 
     if (Array.isArray(batchTexts) && batchTexts.length > 0) {
       const selected = batchTexts.slice(0, MAX_BATCH_SIZE).filter((item: unknown) => typeof item === 'string' && item.trim().length > 0);
@@ -416,6 +418,7 @@ export async function POST(request: NextRequest) {
 
     return NextResponse.json({ success: true, ...responsePayload });
   } catch (err: unknown) {
+    console.error(err);
     const message = err instanceof Error ? err.message : 'Internal error';
     // Surface actionable errors verbatim (timeouts, 502s from upstream, config
     // issues) — these are user-relevant. Stack traces stay hidden.

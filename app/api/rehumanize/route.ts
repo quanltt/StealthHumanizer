@@ -29,7 +29,7 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ success: false, error: 'Request body too large.' }, { status: 413 });
     }
 
-    const { flaggedSentences, style, model, apiKey, fullText} = await request.json();
+    const { flaggedSentences, style, model, apiKey, fullText, providerModel } = await request.json();
 
     // Input validation
     if (!Array.isArray(flaggedSentences) || flaggedSentences.length === 0) {
@@ -58,7 +58,7 @@ export async function POST(request: NextRequest) {
     }
 
     const providerInfo = getProvider(model as ModelProvider);
-    const modelId = providerInfo?.defaultModel || model;
+    const modelId = providerModel || providerInfo?.defaultModel || model;
     const beforeDetection = detectAI(fullText || cleanFlagged.join(' '));
     let rawRewrites: string[] = [];
     let usedFallback = false;
@@ -127,6 +127,7 @@ export async function POST(request: NextRequest) {
       skippedDueToRegression,
     });
   } catch (err: unknown) {
+    console.error(err);
     const message = err instanceof Error ? err.message : 'Internal error';
     return NextResponse.json({ success: false, error: process.env.NODE_ENV === 'development' ? message : 'Internal error' }, { status: 500 });
   }
