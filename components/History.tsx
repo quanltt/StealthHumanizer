@@ -53,7 +53,7 @@ export default function History({ showToast, setActiveTab }: HistoryProps) {
         <div className="bg-dark-800/30 border border-dark-700/30 rounded-xl p-12 text-center">
           <Clock className="w-12 h-12 text-dark-600 mx-auto mb-4" />
           <h3 className="text-lg font-medium text-dark-300 mb-2">No history yet</h3>
-          <p className="text-dark-500 text-sm">Your humanized texts will appear here</p>
+          <p className="text-dark-400 text-sm">Your humanized texts will appear here</p>
           <button
             onClick={() => setActiveTab('humanizer')}
             className="mt-4 flex items-center gap-2 mx-auto px-4 py-2 rounded-lg bg-accent-500/20 text-accent-400 hover:bg-accent-500/30 transition-colors text-sm"
@@ -97,7 +97,7 @@ export default function History({ showToast, setActiveTab }: HistoryProps) {
               <div className="flex items-center justify-between">
                 <div className="flex-1 min-w-0">
                   <p className="text-sm text-dark-200 truncate">{entry.originalText.slice(0, 100)}...</p>
-                  <div className="flex items-center gap-3 mt-1 text-xs text-dark-500">
+                  <div className="flex items-center gap-3 mt-1 text-xs text-dark-400">
                     <span>{formatDate(entry.timestamp)}</span>
                     <span>{entry.wordCount?.input} → {entry.wordCount?.output} words</span>
                     <span className="capitalize">{entry.options.style}</span>

@@ -13,7 +13,7 @@ import { detectAI } from '@/lib/detector';
 import { getReadabilityLabel } from '@/lib/readability';
 import {
   countWords, downloadAsTxt, downloadAsDocx, downloadAsMarkdown, getApiKeys,
-  getProviderModels, getPreferredDomain, setPreferredDomain,
+  getProviderModels, getPreferredDomain, setPreferredDomain, getDefaultProvider,
 } from '@/lib/storage';
 import corpusData from '@/public/corpus-style-model.json';
 import { buildSentenceResults } from '@/lib/text-utils';
@@ -137,11 +137,18 @@ export default function Humanizer({ showToast, onGoToSettings, isFirstVisit }: H
   const [selectedChainModels, setSelectedChainModels] = useState<string[]>([]);
   const [pipelineStep, setPipelineStep] = useState('');
   // Default provider on the public Vercel deployment is "Rudra's Free Usage
-  // Model" — pre-configured, no API key needed. Self-hosters can override via
-  // NEXT_PUBLIC_DEFAULT_PROVIDER (e.g. "gemini", "ollama").
-  const DEFAULT_PROVIDER: ModelProvider =
+  // Model" — pre-configured, no API key needed. Self-hosters can override at
+  // build time via NEXT_PUBLIC_DEFAULT_PROVIDER (e.g. "gemini", "ollama"),
+  // or at runtime — no rebuild needed — via Settings' "Set as default"
+  // (persisted in localStorage, see getDefaultProvider/setDefaultProvider).
+  // The localStorage value always wins over the env var when both are set.
+  const BUILD_DEFAULT_PROVIDER: ModelProvider =
     ((process.env.NEXT_PUBLIC_DEFAULT_PROVIDER as ModelProvider | undefined) || 'rudra-free');
-  const [preferredModel, setPreferredModel] = useState<ModelProvider>(DEFAULT_PROVIDER);
+  const [preferredModel, setPreferredModel] = useState<ModelProvider>(BUILD_DEFAULT_PROVIDER);
+  useEffect(() => {
+    const stored = getDefaultProvider();
+    if (stored) setPreferredModel(stored as ModelProvider);
+  }, []);
   const [intensity, setIntensity] = useState<Intensity>('medium');
 
   // Comparison chart visibility (Phase 4)
@@ -207,6 +214,14 @@ export default function Humanizer({ showToast, onGoToSettings, isFirstVisit }: H
     ) as Record<string, string | undefined>;
     const localProviders: ModelProvider[] = ['ollama', 'lm-studio', 'vllm'];
     const hasKey = (id: string) => !!keys[id]?.trim();
+    // The configured default — whatever's set in Settings ("Set as default"),
+    // falling back to the build-time NEXT_PUBLIC_DEFAULT_PROVIDER — is the
+    // single source of truth for "which provider to use when nothing more
+    // specific applies". We deliberately do NOT fall back to "any provider
+    // that happens to have a saved key" (e.g. leftover from earlier testing)
+    // — that produced confusing, non-deterministic behavior where the app
+    // would silently use a different provider than the one actually intended.
+    const configuredDefault = (getDefaultProvider() || BUILD_DEFAULT_PROVIDER) as ModelProvider;
     let providerId: ModelProvider;
     // "Rudra's Free Usage Model" needs no client API key — the server uses
     // a preconfigured env var. Always allow it as a valid pick.
@@ -217,7 +232,7 @@ export default function Humanizer({ showToast, onGoToSettings, isFirstVisit }: H
     } else if (localProviders.includes(preferredModel)) {
       providerId = preferredModel;
     } else {
-      providerId = (Object.keys(keys).find(k => hasKey(k)) || DEFAULT_PROVIDER) as ModelProvider;
+      providerId = configuredDefault;
     }
     const apiKey =
       keys[providerId]?.trim() ||
@@ -724,7 +739,7 @@ export default function Humanizer({ showToast, onGoToSettings, isFirstVisit }: H
                   <p><kbd className="bg-dark-600 px-1.5 py-0.5 rounded text-accent-300">Ctrl+1-4</kbd> Switch rewrite level</p>
                 </div>
               </div>
-              <button onClick={() => setShowShortcutTooltip(false)} className="text-dark-500 hover:text-white transition-colors">
+              <button onClick={() => setShowShortcutTooltip(false)} className="text-dark-400 hover:text-white transition-colors">
                 <X className="w-4 h-4" />
               </button>
             </div>
@@ -809,7 +824,7 @@ export default function Humanizer({ showToast, onGoToSettings, isFirstVisit }: H
                   </label>
                   <input type="range" min="50" max="100" step="5" value={targetScore} onChange={e => setTargetScore(Number(e.target.value))}
                     className="w-full accent-accent-500" />
-                  <div className="flex justify-between text-xs text-dark-500 mt-1"><span>50%</span><span>75%</span><span>100%</span></div>
+                  <div className="flex justify-between text-xs text-dark-400 mt-1"><span>50%</span><span>75%</span><span>100%</span></div>
                 </div>
                 <div>
                   <label className="flex items-center gap-2 text-sm font-medium text-dark-300 mb-2">
@@ -817,7 +832,7 @@ export default function Humanizer({ showToast, onGoToSettings, isFirstVisit }: H
                   </label>
                   <input type="range" min="0" max="5000" step="100" value={maxOutputWords} onChange={e => setMaxOutputWords(Number(e.target.value))}
                     className="w-full accent-accent-500" />
-                  <div className="flex justify-between text-xs text-dark-500 mt-1"><span>None</span><span>2500</span><span>5000</span></div>
+                  <div className="flex justify-between text-xs text-dark-400 mt-1"><span>None</span><span>2500</span><span>5000</span></div>
                 </div>
                 <div>
                   <label className="flex items-center gap-2 text-sm font-medium text-dark-300 mb-2">
@@ -858,7 +873,7 @@ export default function Humanizer({ showToast, onGoToSettings, isFirstVisit }: H
                 <textarea value={writingSample} onChange={e => setWritingSample(e.target.value)}
                   placeholder="Paste a sample of your own writing here... The AI will match your personal writing style, vocabulary, and sentence patterns. This dramatically improves humanization."
                   className="w-full h-24 p-3 bg-dark-800 border border-dark-700/50 rounded-lg text-white placeholder-dark-500 text-sm resize-none focus:outline-none focus:ring-2 focus:ring-accent-500/50" />
-                <p className="text-xs text-dark-500 mt-1">When provided, the humanized output will match your personal writing style</p>
+                <p className="text-xs text-dark-400 mt-1">When provided, the humanized output will match your personal writing style</p>
               </div>
 
               {/* Pipeline Controls */}
@@ -871,7 +886,7 @@ export default function Humanizer({ showToast, onGoToSettings, isFirstVisit }: H
                 <div className="flex items-center justify-between">
                   <div>
                     <p className="text-sm text-dark-200">Non-LLM Post-Processing</p>
-                    <p className="text-xs text-dark-500">Synonym swaps, collocation replacements, sentence manipulation</p>
+                    <p className="text-xs text-dark-400">Synonym swaps, collocation replacements, sentence manipulation</p>
                   </div>
                   <button
                     onClick={() => setEnablePostprocess(!enablePostprocess)}
@@ -885,7 +900,7 @@ export default function Humanizer({ showToast, onGoToSettings, isFirstVisit }: H
                 <div className="flex items-center justify-between">
                   <div>
                     <p className="text-sm text-dark-200">Multi-Model Chain</p>
-                    <p className="text-xs text-dark-500">Pass text through multiple AI models to mix fingerprints</p>
+                    <p className="text-xs text-dark-400">Pass text through multiple AI models to mix fingerprints</p>
                   </div>
                   <button
                     onClick={() => {
@@ -988,7 +1003,7 @@ export default function Humanizer({ showToast, onGoToSettings, isFirstVisit }: H
           <div className="flex items-center justify-between mb-2">
             <label className="text-sm font-medium text-dark-300">Input Text</label>
             <div className="flex items-center gap-2">
-              <span className={`text-xs ${wordCount > 10000 ? 'text-red-400' : 'text-dark-500'}`}>{wordCount} / 10,000 words</span>
+              <span className={`text-xs ${wordCount > 10000 ? 'text-red-400' : 'text-dark-400'}`}>{wordCount} / 10,000 words</span>
               <button onClick={() => fileInputRef.current?.click()} disabled={fileUploading}
                 className="flex items-center gap-1 px-2 py-1 rounded text-xs bg-dark-800 hover:bg-dark-700 text-dark-400 hover:text-white transition-colors disabled:opacity-50">
                 <Upload className="w-3 h-3" /> {fileUploading ? 'Loading...' : 'Upload File'}
@@ -1064,7 +1079,7 @@ export default function Humanizer({ showToast, onGoToSettings, isFirstVisit }: H
                         <span className={`text-sm font-bold ${originalDetection.score >= 70 ? 'text-green-400' : originalDetection.score >= 50 ? 'text-yellow-400' : 'text-red-400'}`}>
                           {originalDetection.score}%
                         </span>
-                        <ArrowRight className="w-3 h-3 text-dark-500" />
+                        <ArrowRight className="w-3 h-3 text-dark-400" />
                       </>
                     )}
                     <span className={`text-lg font-bold ${detection ? (detection.score >= 70 ? 'text-green-400' : detection.score >= 50 ? 'text-yellow-400' : 'text-red-400') : 'text-dark-200'}`}>
@@ -1084,7 +1099,7 @@ export default function Humanizer({ showToast, onGoToSettings, isFirstVisit }: H
                       {originalDetection && (
                         <>
                           <span className="text-sm font-bold text-dark-300">{originalDetection.readability.fleschReadingEase}</span>
-                          <ArrowRight className="w-3 h-3 text-dark-500" />
+                          <ArrowRight className="w-3 h-3 text-dark-400" />
                         </>
                       )}
                       <span className={`text-lg font-bold ${readLabel?.color || 'text-dark-200'}`}>{detection.readability.fleschReadingEase}</span>
@@ -1096,21 +1111,21 @@ export default function Humanizer({ showToast, onGoToSettings, isFirstVisit }: H
                   <p className="text-xs text-dark-400 mb-1">Word Count</p>
                   <div className="flex items-center justify-center gap-1">
                     <span className="text-sm font-bold text-dark-300">{result.wordCount.input}</span>
-                    <ArrowRight className="w-3 h-3 text-dark-500" />
+                    <ArrowRight className="w-3 h-3 text-dark-400" />
                     <span className="text-lg font-bold text-dark-200">{result.wordCount.output}</span>
                   </div>
-                  <p className="text-xs mt-0.5 text-dark-500">
+                  <p className="text-xs mt-0.5 text-dark-400">
                     {result.wordCount.input > 0 ? (((result.wordCount.output - result.wordCount.input) / result.wordCount.input) * 100).toFixed(0) : 0}% change
                   </p>
                 </div>
                 <div className="text-center">
                   <p className="text-xs text-dark-400 mb-1">Passes</p>
                   <p className="text-lg font-bold text-accent-400">{result.passes}</p>
-                  <p className="text-xs mt-0.5 text-dark-500">{result.modelName}</p>
+                  <p className="text-xs mt-0.5 text-dark-400">{result.modelName}</p>
                 </div>
               </div>
               {detection?.confidenceInterval && (
-                <p className="text-xs text-dark-500 mt-2 text-center">
+                <p className="text-xs text-dark-400 mt-2 text-center">
                   Confidence interval: {detection.confidenceInterval.lower}% — {detection.confidenceInterval.upper}%
                 </p>
               )}
@@ -1168,7 +1183,7 @@ export default function Humanizer({ showToast, onGoToSettings, isFirstVisit }: H
                     const isFlagged = score < 60;
                     return (
                       <div key={i} className="group">
-                        <p className="text-dark-500 text-xs line-through mb-1">{s.original}</p>
+                        <p className="text-dark-400 text-xs line-through mb-1">{s.original}</p>
                         <div className={`sentence-highlight cursor-pointer p-1.5 rounded border flex items-start justify-between gap-2 ${
                           !isFlagged ? 'border-green-500/30' : score >= 40 ? 'border-yellow-500/30' : 'border-red-500/30'
                         }`} onClick={() => handleGetAlternatives(i)}>
@@ -1179,7 +1194,7 @@ export default function Humanizer({ showToast, onGoToSettings, isFirstVisit }: H
                                 {s.detectionScore}% {isFlagged && '⚠'} •
                               </span>
                             )}
-                            <ChevronDown className="w-3 h-3 inline text-dark-500 group-hover:text-accent-400" />
+                            <ChevronDown className="w-3 h-3 inline text-dark-400 group-hover:text-accent-400" />
                           </div>
                           <button
                             onClick={(e) => { e.stopPropagation(); navigator.clipboard.writeText(s.humanized); showToast('success', 'Sentence copied!'); }}
@@ -1233,7 +1248,7 @@ export default function Humanizer({ showToast, onGoToSettings, isFirstVisit }: H
 
               {/* Verify online — external detectors, no API key required */}
               <div className="flex items-center gap-2 flex-wrap text-xs">
-                <span className="text-dark-500">Verify with an external detector:</span>
+                <span className="text-dark-400">Verify with an external detector:</span>
                 <a href="https://gptzero.me" target="_blank" rel="noopener noreferrer"
                   className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg font-medium bg-dark-700/60 text-dark-200 hover:text-white hover:bg-dark-700 border border-dark-600/50 transition-colors">
                   <Shield className="w-3.5 h-3.5" /> GPTZero
@@ -1281,7 +1296,7 @@ export default function Humanizer({ showToast, onGoToSettings, isFirstVisit }: H
                   }`}>{issue.type}</span>
                   <div className="flex-1">
                     <p className="text-dark-300"><span className="line-through text-red-400/60">{issue.original}</span> → <span className="text-green-400">{issue.suggestion}</span></p>
-                    <p className="text-dark-500 text-xs mt-1">{issue.explanation}</p>
+                    <p className="text-dark-400 text-xs mt-1">{issue.explanation}</p>
                   </div>
                 </div>
               </div>
@@ -1300,12 +1315,12 @@ export default function Humanizer({ showToast, onGoToSettings, isFirstVisit }: H
             <div className="bg-dark-700/30 rounded-lg p-3 text-center">
               <p className={`text-xl font-bold ${readLabel?.color || 'text-dark-200'}`}>{detection.readability.fleschReadingEase}</p>
               <p className="text-xs text-dark-400">Flesch Reading Ease</p>
-              <p className={`text-xs mt-1 ${readLabel?.color || 'text-dark-500'}`}>{readLabel?.label}</p>
+              <p className={`text-xs mt-1 ${readLabel?.color || 'text-dark-400'}`}>{readLabel?.label}</p>
             </div>
             <div className="bg-dark-700/30 rounded-lg p-3 text-center">
               <p className="text-xl font-bold text-dark-200">{detection.readability.fleschKincaidGrade}</p>
               <p className="text-xs text-dark-400">Grade Level</p>
-              <p className="text-xs text-dark-500 mt-1">{detection.readability.fleschKincaidGrade <= 12 ? 'Accessible' : 'Advanced'}</p>
+              <p className="text-xs text-dark-400 mt-1">{detection.readability.fleschKincaidGrade <= 12 ? 'Accessible' : 'Advanced'}</p>
             </div>
             <div className="bg-dark-700/30 rounded-lg p-3 text-center">
               <p className="text-xl font-bold text-dark-200">{detection.readability.avgWordsPerSentence}</p>
@@ -1316,7 +1331,7 @@ export default function Humanizer({ showToast, onGoToSettings, isFirstVisit }: H
               <p className="text-xs text-dark-400">Reading Time</p>
             </div>
           </div>
-          <p className="text-xs text-dark-500 mt-3">Estimated score based on local heuristics. Real detectors (GPTZero, Originality.ai) may differ.</p>
+          <p className="text-xs text-dark-400 mt-3">Estimated score based on local heuristics. Real detectors (GPTZero, Originality.ai) may differ.</p>
         </div>
       )}
 
@@ -1339,14 +1354,14 @@ export default function Humanizer({ showToast, onGoToSettings, isFirstVisit }: H
                   <div className="flex-1 rounded px-2 py-1.5 overflow-hidden" style={{ backgroundColor: bgColor, borderLeft: `3px solid ${borderColor}` }}>
                     <p className="text-xs text-dark-200 truncate">{s.text}</p>
                   </div>
-                  <span className="text-[10px] text-dark-500 shrink-0 w-8 text-right">
+                  <span className="text-[10px] text-dark-400 shrink-0 w-8 text-right">
                     {s.classification === 'human' ? '✓' : s.classification === 'maybe' ? '~' : '✗'}
                   </span>
                 </div>
               );
             })}
           </div>
-          <div className="flex items-center gap-2 mt-3 text-[10px] text-dark-500">
+          <div className="flex items-center gap-2 mt-3 text-[10px] text-dark-400">
             <span className="flex items-center gap-1"><span className="w-3 h-3 rounded bg-green-500/30 border border-green-500/50" /> Human (60%+)</span>
             <span className="flex items-center gap-1"><span className="w-3 h-3 rounded bg-yellow-500/30 border border-yellow-500/50" /> Maybe (35-59%)</span>
             <span className="flex items-center gap-1"><span className="w-3 h-3 rounded bg-red-500/30 border border-red-500/50" /> AI (&lt;35%)</span>
@@ -1375,27 +1390,27 @@ export default function Humanizer({ showToast, onGoToSettings, isFirstVisit }: H
       {result && (
         <div className="flex flex-wrap items-center gap-x-5 gap-y-2 text-xs text-dark-400 px-1 animate-fade-in">
           <span className="flex items-center gap-1.5">
-            <span className="text-dark-500">Model:</span>
+            <span className="text-dark-400">Model:</span>
             <span className="text-dark-200 font-medium">{result.modelName}</span>
           </span>
           <span className="flex items-center gap-1.5">
-            <span className="text-dark-500">Passes:</span>
+            <span className="text-dark-400">Passes:</span>
             <span className="text-dark-200 font-medium">{result.passes}</span>
           </span>
           <span className="flex items-center gap-1.5">
-            <span className="text-dark-500">Confidence:</span>
+            <span className="text-dark-400">Confidence:</span>
             <span className="text-dark-200 font-medium">
               {typeof result.confidenceReport?.confidence === 'number' ? `${result.confidenceReport.confidence}%` : 'N/A'}
             </span>
           </span>
           {typeof result.observability?.estimatedCostUsd === 'number' && result.observability.estimatedCostUsd > 0 && (
             <span className="flex items-center gap-1.5">
-              <span className="text-dark-500">Est. cost:</span>
+              <span className="text-dark-400">Est. cost:</span>
               <span className="text-dark-200 font-medium">${result.observability.estimatedCostUsd.toFixed(4)}</span>
             </span>
           )}
           <span className="flex items-center gap-1.5">
-            <span className="text-dark-500">Fallback guard:</span>
+            <span className="text-dark-400">Fallback guard:</span>
             <span className={`font-medium ${result.fallbackBehavior?.used ? 'text-yellow-400' : 'text-green-400'}`}>
               {result.fallbackBehavior?.used ? 'engaged' : 'not needed'}
             </span>
@@ -1412,7 +1427,7 @@ export default function Humanizer({ showToast, onGoToSettings, isFirstVisit }: H
             <h4 className="text-sm font-semibold text-white flex items-center gap-2">
               <Shield className="w-4 h-4 text-accent-400" />
               AI Detector Verdict
-              <span className="text-xs font-normal text-dark-500">(independent of the heuristic score)</span>
+              <span className="text-xs font-normal text-dark-400">(independent of the heuristic score)</span>
             </h4>
             {postDetect?.source === 'rudra' && (
               <span className="text-[10px] px-2 py-0.5 rounded-full bg-green-500/10 text-green-400 border border-green-500/20">
@@ -1429,17 +1444,17 @@ export default function Humanizer({ showToast, onGoToSettings, isFirstVisit }: H
           {postDetect && !postDetectLoading && (
             <div className="grid grid-cols-2 gap-3 text-sm">
               <div>
-                <div className="text-xs text-dark-500 mb-1">Verdict</div>
+                <div className="text-xs text-dark-400 mb-1">Verdict</div>
                 <div className={`text-2xl font-bold ${postDetect.label === 'human' ? 'text-green-400' : 'text-red-400'}`}>
                   {postDetect.label === 'human' ? 'Likely Human' : 'Likely AI'}
                 </div>
               </div>
               <div>
-                <div className="text-xs text-dark-500 mb-1">AI probability</div>
+                <div className="text-xs text-dark-400 mb-1">AI probability</div>
                 <div className="text-2xl font-bold text-white">
                   {(postDetect.aiProbability * 100).toFixed(1)}%
                 </div>
-                <div className="text-xs text-dark-500 mt-1">
+                <div className="text-xs text-dark-400 mt-1">
                   Human: {(postDetect.humanProbability * 100).toFixed(1)}% · {postDetect.model}
                   {postDetect.elapsedMs > 0 && ` · ${postDetect.elapsedMs}ms`}
                 </div>
@@ -1458,17 +1473,17 @@ export default function Humanizer({ showToast, onGoToSettings, isFirstVisit }: H
             <div>
               <div className="w-8 h-8 rounded-full bg-accent-500/20 text-accent-400 flex items-center justify-center mx-auto mb-2 text-sm font-bold">1</div>
               <p>Paste text or upload a file</p>
-              <p className="text-xs mt-1 text-dark-500">.txt, .docx, .pdf supported</p>
+              <p className="text-xs mt-1 text-dark-400">.txt, .docx, .pdf supported</p>
             </div>
             <div>
               <div className="w-8 h-8 rounded-full bg-accent-500/20 text-accent-400 flex items-center justify-center mx-auto mb-2 text-sm font-bold">2</div>
               <p>Choose  style, and tone</p>
-              <p className="text-xs mt-1 text-dark-500">🧑 Humanize is recommended</p>
+              <p className="text-xs mt-1 text-dark-400">🧑 Humanize is recommended</p>
             </div>
             <div>
               <div className="w-8 h-8 rounded-full bg-accent-500/20 text-accent-400 flex items-center justify-center mx-auto mb-2 text-sm font-bold">3</div>
               <p>Get human-sounding text back</p>
-              <p className="text-xs mt-1 text-dark-500">Re-humanize flagged sentences</p>
+              <p className="text-xs mt-1 text-dark-400">Re-humanize flagged sentences</p>
             </div>
           </div>
         </div>

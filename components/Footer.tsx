@@ -55,11 +55,11 @@ export default function Footer() {
                 <Mail className="w-4 h-4" />
               </a>
             </div>
-            <p className="text-dark-500 text-xs mt-5">Made with &#x2764;&#xfe0f; by Rudra Sarker</p>
+            <p className="text-dark-400 text-xs mt-5">Made with &#x2764;&#xfe0f; by Rudra Sarker</p>
           </div>
         </div>
 
-        <div className="mt-10 pt-6 border-t border-dark-800/50 flex flex-col md:flex-row items-center justify-between gap-3 text-xs text-dark-500">
+        <div className="mt-10 pt-6 border-t border-dark-800/50 flex flex-col md:flex-row items-center justify-between gap-3 text-xs text-dark-400">
           <p>&copy; {new Date().getFullYear()} StealthHumanizer. Open source under MIT License.</p>
           <div className="flex gap-4">
             <span className="flex items-center gap-1">&#x1f512; No data stored</span>

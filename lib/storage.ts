@@ -8,6 +8,7 @@ const KEYS = {
   VISITED: 'stealthhumanizer_visited',
   PROVIDER_MODELS: 'stealthhumanizer_provider_models',
   DOMAIN: 'stealthhumanizer_domain',
+  DEFAULT_PROVIDER: 'stealthhumanizer_default_provider',
 };
 
 function encode(data: string): string {
@@ -76,6 +77,23 @@ export function setPreferredDomain(domain: string): void {
   localStorage.setItem(KEYS.DOMAIN, domain);
 }
 
+// The app-wide default provider (shown pre-selected on load, and used
+// whenever the current selection has no usable key — see getApiCredentials
+// in Humanizer.tsx). Set from Settings; persists in localStorage so it
+// survives reloads and can be changed without a rebuild. Returns null when
+// the user hasn't explicitly chosen one, so callers can fall back to the
+// build-time NEXT_PUBLIC_DEFAULT_PROVIDER env var.
+export function getDefaultProvider(): string | null {
+  if (typeof window === 'undefined') return null;
+  return localStorage.getItem(KEYS.DEFAULT_PROVIDER) || null;
+}
+
+export function setDefaultProvider(providerId: string | undefined): void {
+  if (typeof window === 'undefined') return;
+  if (providerId) localStorage.setItem(KEYS.DEFAULT_PROVIDER, providerId);
+  else localStorage.removeItem(KEYS.DEFAULT_PROVIDER);
+}
+
 // History
 const MAX_HISTORY_ITEMS = 50;
 
@@ -137,7 +155,14 @@ export function getTheme(): 'dark' | 'light' {
   if (typeof window === 'undefined') return 'dark';
   const stored = localStorage.getItem(KEYS.THEME);
   if (stored === 'system') return getSystemThemePreference();
-  return (stored === 'light' || stored === 'dark') ? stored : getSystemThemePreference();
+  if (stored === 'light' || stored === 'dark') return stored;
+  // No explicit choice saved yet: default to 'dark' rather than following
+  // the OS/browser's prefers-color-scheme. Light theme only recolors the
+  // page background gradient (see .light in globals.css) — every component
+  // color (bg-dark-800, text-dark-400, etc.) is a hardcoded dark-palette
+  // value that doesn't adapt, so auto-selecting light on a light-mode OS
+  // produces a washed-out, low-contrast UI the user never asked for.
+  return 'dark';
 }
 
 export function setTheme(theme: 'dark' | 'light' | 'system'): void {

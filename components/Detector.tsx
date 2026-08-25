@@ -136,13 +136,13 @@ export default function Detector({ showToast }: DetectorProps) {
       <div>
         <div className="flex items-center justify-between mb-2">
           <label className="text-sm font-medium text-dark-300">Text to Analyze</label>
-          {text && <button onClick={() => { setText(''); setHeuristic(null); setMl(null); setError(null); }} className="text-xs text-dark-500 hover:text-dark-300">Clear</button>}
+          {text && <button onClick={() => { setText(''); setHeuristic(null); setMl(null); setError(null); }} className="text-xs text-dark-400 hover:text-dark-300">Clear</button>}
         </div>
         <textarea value={text} onChange={e => setText(e.target.value)}
           placeholder="Paste text here to check if it's AI-generated..."
           className="w-full h-48 p-4 bg-dark-800/50 border border-dark-700/50 rounded-xl text-white placeholder-dark-500 resize-none focus:outline-none focus:ring-2 focus:ring-accent-500/50 text-sm" />
         <div className="flex items-center justify-between mt-3">
-          <span className="text-xs text-dark-500">{countWords(text)} words</span>
+          <span className="text-xs text-dark-400">{countWords(text)} words</span>
           <button onClick={handleDetect} disabled={loading || !text.trim()}
             className="flex items-center gap-2 px-6 py-3 rounded-xl bg-gradient-to-r from-accent-500 to-accent-600 text-white font-medium shadow-lg shadow-accent-500/25 disabled:opacity-50">
             {loading ? <><Zap className="w-5 h-5 animate-pulse" /> Running ML detector...</> : <><Search className="w-5 h-5" /> Analyze</>}
@@ -190,7 +190,7 @@ export default function Detector({ showToast }: DetectorProps) {
                 {ml.label === 'human' ? 'Likely Human' : 'Likely AI'}
               </span>
             </span>
-            <span className="text-xs text-dark-500">
+            <span className="text-xs text-dark-400">
               {ml.model}{ml.elapsedMs > 0 && ` · ${ml.elapsedMs}ms`}
             </span>
           </div>
@@ -207,12 +207,12 @@ export default function Detector({ showToast }: DetectorProps) {
                 <span className={`text-lg font-medium ${scoreColor}`}>{verdictLabel}</span>
               </div>
               <div className={`text-3xl font-bold ${getScoreColor(heuristic.score)} mb-1`}>{heuristic.score}%</div>
-              <div className="text-xs text-dark-500">heuristic pattern score (supplementary)</div>
+              <div className="text-xs text-dark-400">heuristic pattern score (supplementary)</div>
             </div>
             <div className="h-3 bg-dark-700 rounded-full overflow-hidden">
               <div className={`h-full rounded-full progress-bar ${getScoreBarColor(heuristic.score)}`} style={{ width: `${heuristic.score}%` }} />
             </div>
-            <div className="flex justify-between mt-1 text-xs text-dark-500"><span>AI Generated</span><span>Human Written</span></div>
+            <div className="flex justify-between mt-1 text-xs text-dark-400"><span>AI Generated</span><span>Human Written</span></div>
           </div>
 
           {/* Detection Metrics */}
@@ -243,7 +243,7 @@ export default function Detector({ showToast }: DetectorProps) {
                     <div className={`h-full rounded-full ${metric.good ? 'bg-green-500/60' : 'bg-red-500/60'}`}
                       style={{ width: `${Math.min(100, metric.value)}%` }} />
                   </div>
-                  <p className="text-xs text-dark-500 mt-1">{metric.desc}</p>
+                  <p className="text-xs text-dark-400 mt-1">{metric.desc}</p>
                 </div>
               ))}
             </div>
@@ -263,7 +263,7 @@ export default function Detector({ showToast }: DetectorProps) {
               <div className="bg-dark-700/30 rounded-lg p-4 text-center">
                 <p className="text-2xl font-bold text-dark-200">{heuristic.readability.fleschKincaidGrade}</p>
                 <p className="text-xs text-dark-400 mt-1">Grade Level</p>
-                <p className="text-xs text-dark-500 mt-1">{getGradeLevelDescription(heuristic.readability.fleschKincaidGrade)}</p>
+                <p className="text-xs text-dark-400 mt-1">{getGradeLevelDescription(heuristic.readability.fleschKincaidGrade)}</p>
               </div>
               <div className="bg-dark-700/30 rounded-lg p-4 text-center">
                 <p className="text-2xl font-bold text-dark-200">{heuristic.readability.colemanLiauIndex}</p>
@@ -272,7 +272,7 @@ export default function Detector({ showToast }: DetectorProps) {
               <div className="bg-dark-700/30 rounded-lg p-4 text-center">
                 <p className="text-2xl font-bold text-dark-200">{heuristic.readability.readingTimeMinutes}m</p>
                 <p className="text-xs text-dark-400 mt-1">Reading Time</p>
-                <p className="text-xs text-dark-500 mt-1">{heuristic.readability.totalWords} words</p>
+                <p className="text-xs text-dark-400 mt-1">{heuristic.readability.totalWords} words</p>
               </div>
             </div>
           </div>
@@ -292,7 +292,7 @@ export default function Detector({ showToast }: DetectorProps) {
                   {sentence.issues.length > 0 && (
                     <div className="mt-1 flex flex-wrap gap-1">
                       {sentence.issues.map((issue, j) => (
-                        <span key={j} className="text-xs text-dark-500 bg-dark-700/50 px-2 py-0.5 rounded">{issue}</span>
+                        <span key={j} className="text-xs text-dark-400 bg-dark-700/50 px-2 py-0.5 rounded">{issue}</span>
                       ))}
                     </div>
                   )}

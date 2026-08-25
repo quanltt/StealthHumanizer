@@ -3,7 +3,7 @@
 import { useState, useEffect } from 'react';
 import { Settings as SettingsIcon, Key, Eye, EyeOff, ExternalLink, Shield, Check, X, Zap, Star, RotateCcw } from 'lucide-react';
 import { WEB_PROVIDERS as PROVIDERS, getProvider, testApiKey } from '@/lib/providers';
-import { getApiKeys, setApiKeys, clearApiKeys, getProviderModels, setProviderModel } from '@/lib/storage';
+import { getApiKeys, setApiKeys, clearApiKeys, getProviderModels, setProviderModel, getDefaultProvider, setDefaultProvider } from '@/lib/storage';
 import { ModelProvider } from '@/lib/types';
 
 interface SettingsProps {
@@ -20,8 +20,17 @@ export default function Settings({ showToast }: SettingsProps) {
   const [quickStatus, setQuickStatus] = useState<'idle' | 'testing' | 'valid' | 'invalid'>('idle');
   const [testAllStatus, setTestAllStatus] = useState<Record<string, 'valid' | 'invalid' | 'testing'>>({});
   const [providerModels, setProviderModels] = useState<Record<string, string>>({});
+  const [defaultProvider, setDefaultProviderState] = useState<string>('');
 
-  useEffect(() => { setKeys(getApiKeys()); setProviderModels(getProviderModels()); }, []);
+  useEffect(() => { setKeys(getApiKeys()); setProviderModels(getProviderModels()); setDefaultProviderState(getDefaultProvider() || ''); }, []);
+
+  const handleSetDefaultProvider = (providerId: string) => {
+    setDefaultProviderState(providerId);
+    setDefaultProvider(providerId || undefined);
+    showToast('success', providerId
+      ? `${getProvider(providerId as any)?.name || providerId} is now the default provider.`
+      : 'Default provider reset to the build-time default.');
+  };
 
   const handleModelSelect = (providerId: string, model: string) => {
     const next = { ...providerModels, [providerId]: model };
@@ -199,7 +208,7 @@ export default function Settings({ showToast }: SettingsProps) {
                   </div>
                   <p className="text-sm text-dark-400 mt-1">{provider.description}</p>
                 </div>
-                <Eye className="w-4 h-4 text-dark-500" />
+                <Eye className="w-4 h-4 text-dark-400" />
               </div>
             </div>
           ))}
@@ -223,7 +232,7 @@ export default function Settings({ showToast }: SettingsProps) {
                   </div>
                   <p className="text-sm text-dark-400 mt-1">{provider.description}</p>
                 </div>
-                <Eye className="w-4 h-4 text-dark-500" />
+                <Eye className="w-4 h-4 text-dark-400" />
               </div>
             </div>
           ))}
@@ -252,7 +261,7 @@ export default function Settings({ showToast }: SettingsProps) {
                     via the StealthHumanizer server. Just close this dialog, paste your text, and
                     click Humanize. Available on the public Vercel deployment by default.
                   </p>
-                  <p className="text-xs text-dark-500 mt-2">
+                  <p className="text-xs text-dark-400 mt-2">
                     Self-hosters: set <code className="text-dark-300">RUDRA_HUMANIZER_API_KEY</code> on
                     your Vercel/Node server. See <code className="text-dark-300">.env.example</code>.
                   </p>
@@ -269,7 +278,7 @@ export default function Settings({ showToast }: SettingsProps) {
                       placeholder={current.placeholder}
                       className="w-full px-4 py-3 bg-dark-900/50 border border-dark-700/50 rounded-lg text-white placeholder-dark-500 focus:outline-none focus:ring-2 focus:ring-accent-500/50 pr-10" />
                     <button onClick={() => setShowKeys(prev => ({ ...prev, [current.id]: !prev[current.id] }))}
-                      className="absolute right-3 top-1/2 -translate-y-1/2 text-dark-500 hover:text-dark-300">
+                      className="absolute right-3 top-1/2 -translate-y-1/2 text-dark-400 hover:text-dark-300">
                       {showKeys[current.id] ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
                     </button>
                   </div>
@@ -327,7 +336,7 @@ export default function Settings({ showToast }: SettingsProps) {
                   );
                 })}
               </div>
-              <p className="text-xs text-dark-500 mt-1">
+              <p className="text-xs text-dark-400 mt-1">
                 {providerModels[current.id] && providerModels[current.id] !== current.defaultModel
                   ? `Using: ${providerModels[current.id]} (default: ${current.defaultModel})`
                   : `Default: ${current.defaultModel}`}
@@ -375,18 +384,49 @@ export default function Settings({ showToast }: SettingsProps) {
         </div>
       )}
 
-      {/* Provider Priority */}
+      {/* Default Provider */}
       <div className="bg-dark-800/50 border border-dark-700/50 rounded-xl p-6">
-        <h3 className="text-lg font-medium text-white mb-3">Priority Order</h3>
-        <p className="text-sm text-dark-400 mb-4">When multiple keys are set, first available is used:</p>
+        <div className="flex items-center justify-between mb-1">
+          <h3 className="text-lg font-medium text-white">Default Provider</h3>
+          {defaultProvider && (
+            <button onClick={() => handleSetDefaultProvider('')}
+              className="text-xs px-2 py-1 rounded-lg bg-dark-700/60 text-dark-400 hover:text-white hover:bg-dark-700 transition-colors shrink-0">
+              Reset to build default
+            </button>
+          )}
+        </div>
+        <p className="text-sm text-dark-400 mb-4">
+          Click a provider to make it the one always used. The build default is{' '}
+          <span className="text-dark-200 font-medium">
+            {getProvider((process.env.NEXT_PUBLIC_DEFAULT_PROVIDER as any) || 'rudra-free')?.name || 'Rudra\u2019s Free Usage Model'}
+          </span>{' '}
+          unless overridden here.
+        </p>
         <div className="space-y-2">
-          {PROVIDERS.map((p, i) => (
-            <div key={p.id} className="flex items-center gap-3 p-2 rounded-lg bg-dark-700/30 text-sm">
-              <span className="w-6 h-6 rounded-full bg-dark-700 text-dark-300 flex items-center justify-center text-xs font-bold">{i + 1}</span>
-              <span className="text-dark-200 flex-1">{p.name}</span>
-              {keys[p.id] ? <Check className="w-4 h-4 text-green-400" /> : <X className="w-4 h-4 text-dark-600" />}
-            </div>
-          ))}
+          {[...PROVIDERS]
+            .sort((a, b) => (a.id === (defaultProvider || undefined) ? -1 : b.id === (defaultProvider || undefined) ? 1 : 0))
+            .map((p) => {
+              const isDefault = defaultProvider ? defaultProvider === p.id : (((process.env.NEXT_PUBLIC_DEFAULT_PROVIDER as any) || 'rudra-free') === p.id);
+              return (
+                <button
+                  key={p.id}
+                  type="button"
+                  onClick={() => handleSetDefaultProvider(p.id)}
+                  className={`w-full flex items-center gap-3 p-3 rounded-lg text-sm text-left transition-colors ${
+                    isDefault ? 'bg-accent-500/15 ring-1 ring-accent-500/50' : 'bg-dark-700/30 hover:bg-dark-700/50'
+                  }`}
+                >
+                  <span className={`w-6 h-6 rounded-full flex items-center justify-center text-xs font-bold shrink-0 ${
+                    isDefault ? 'bg-accent-500 text-white' : 'bg-dark-700 text-dark-300'
+                  }`}>
+                    {isDefault ? '★' : ''}
+                  </span>
+                  <span className={`flex-1 ${isDefault ? 'text-white font-medium' : 'text-dark-200'}`}>{p.name}</span>
+                  {isDefault && <span className="text-xs px-1.5 py-0.5 rounded-full bg-accent-500/20 text-accent-300 border border-accent-500/40">Default</span>}
+                  {keys[p.id] ? <Check className="w-4 h-4 text-green-400" /> : <X className="w-4 h-4 text-dark-400" />}
+                </button>
+              );
+            })}
         </div>
       </div>
 

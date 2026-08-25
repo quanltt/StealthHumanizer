@@ -1,8 +1,8 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { Layers, Plus, Trash2, Zap, Copy, AlertTriangle, CheckCircle, Loader2 } from 'lucide-react';
-import { getApiKeys, getProviderModels, getPreferredDomain, setPreferredDomain } from '@/lib/storage';
+import { getApiKeys, getProviderModels, getPreferredDomain, setPreferredDomain, getDefaultProvider } from '@/lib/storage';
 import { WEB_PROVIDERS as PROVIDERS } from '@/lib/providers';
 import { ModelProvider } from '@/lib/types';
 import { BASE_PATH } from '@/lib/base-path';
@@ -46,7 +46,17 @@ export default function BatchHumanizer({ showToast }: BatchHumanizerProps) {
   const [results, setResults] = useState<BatchResult[]>([]);
   const [loading, setLoading] = useState(false);
   const [itemStatuses, setItemStatuses] = useState<Record<string, ItemStatus>>({});
-  const [model, setModel] = useState<ModelProvider>(PROVIDERS[0]?.id ?? 'gemini');
+  // Was previously PROVIDERS[0]?.id — literally "the first provider in the
+  // static list", ignoring any configured default entirely. Now matches
+  // Humanizer.tsx: build-time NEXT_PUBLIC_DEFAULT_PROVIDER first (SSR-safe
+  // initial value), then the Settings-persisted default (if any) right
+  // after mount — never "whichever provider happens to have a key".
+  const BUILD_DEFAULT_PROVIDER = ((process.env.NEXT_PUBLIC_DEFAULT_PROVIDER as ModelProvider | undefined) || PROVIDERS[0]?.id || 'gemini');
+  const [model, setModel] = useState<ModelProvider>(BUILD_DEFAULT_PROVIDER);
+  useEffect(() => {
+    const stored = getDefaultProvider();
+    if (stored) setModel(stored as ModelProvider);
+  }, []);
   const [level, setLevel] = useState<'light' | 'medium' | 'aggressive' | 'ninja'>('medium');
   const [domain, setDomain] = useState<DomainId>(() => (typeof window !== 'undefined' ? (getPreferredDomain() as DomainId) : 'default'));
   const handleDomainChange = (d: DomainId) => { setDomain(d); setPreferredDomain(d); };
@@ -297,7 +307,7 @@ export default function BatchHumanizer({ showToast }: BatchHumanizerProps) {
             <div key={item.id} className="flex gap-2 items-start">
               <div className="flex-1">
                 <div className="flex items-center justify-between mb-1">
-                  <span className="text-xs text-dark-500 font-medium flex items-center gap-1">
+                  <span className="text-xs text-dark-400 font-medium flex items-center gap-1">
                     Text {idx + 1}
                     {getStatusIcon(status)}
                   </span>

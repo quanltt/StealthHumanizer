@@ -133,7 +133,7 @@ export default function ObservabilityDashboard({ showToast }: ObservabilityDashb
         <div className="glass-card rounded-xl p-5">
           <h3 className="font-semibold text-white mb-4">Provider breakdown</h3>
           <div className="space-y-2">
-            {providerBreakdown.length === 0 ? <p className="text-sm text-dark-500 py-4 text-center">No provider runs yet.</p> : providerBreakdown.map(row => (
+            {providerBreakdown.length === 0 ? <p className="text-sm text-dark-400 py-4 text-center">No provider runs yet.</p> : providerBreakdown.map(row => (
               <div key={row.provider} className="grid grid-cols-5 gap-2 items-center rounded-lg bg-dark-800/40 p-3 text-xs">
                 <span className="font-medium text-white col-span-1">{row.provider}</span>
                 <span className="text-dark-300">{row.runs} runs</span>
@@ -148,7 +148,7 @@ export default function ObservabilityDashboard({ showToast }: ObservabilityDashb
         <div className="glass-card rounded-xl p-5">
           <h3 className="font-semibold text-white mb-4">14-day trend</h3>
           <div className="space-y-2">
-            {dailyPoints.length === 0 ? <p className="text-sm text-dark-500 py-4 text-center">No daily telemetry yet.</p> : dailyPoints.map(point => (
+            {dailyPoints.length === 0 ? <p className="text-sm text-dark-400 py-4 text-center">No daily telemetry yet.</p> : dailyPoints.map(point => (
               <div key={point.date} className="grid grid-cols-5 gap-2 items-center rounded-lg bg-dark-800/40 p-3 text-xs">
                 <span className="text-white font-medium">{point.date}</span>
                 <span className="text-dark-300">{point.runs} runs</span>
@@ -178,12 +178,12 @@ export default function ObservabilityDashboard({ showToast }: ObservabilityDashb
             </thead>
             <tbody>
               {benchmarkRows.length === 0 ? (
-                <tr><td colSpan={5} className="py-5 text-center text-dark-500">Run a benchmark to populate this table.</td></tr>
+                <tr><td colSpan={5} className="py-5 text-center text-dark-400">Run a benchmark to populate this table.</td></tr>
               ) : benchmarkRows.map(row => (
                 <tr key={row.label} className="border-b border-dark-800/80 align-top">
                   <td className="py-3 text-dark-300 max-w-xl">
                     <p className="font-medium text-dark-200">{row.label}</p>
-                    <p className="text-xs text-dark-500 mt-1 line-clamp-2">{row.rewritten}</p>
+                    <p className="text-xs text-dark-400 mt-1 line-clamp-2">{row.rewritten}</p>
                     {row.warnings.length > 0 && <p className="text-xs text-yellow-400 mt-1">⚠ {row.warnings.join(' ')}</p>}
                   </td>
                   <td className="py-3 text-right text-dark-300">{row.before}%</td>
@@ -211,7 +211,7 @@ export default function ObservabilityDashboard({ showToast }: ObservabilityDashb
               <span className={event.success ? 'text-green-400' : 'text-red-400'}>{event.success ? 'success' : 'failed'}</span>
             </div>
           ))}
-          {events.length === 0 && <p className="text-center text-dark-500 py-6">No runs recorded yet. Humanize text or use privacy mode to populate this dashboard.</p>}
+          {events.length === 0 && <p className="text-center text-dark-400 py-6">No runs recorded yet. Humanize text or use privacy mode to populate this dashboard.</p>}
         </div>
       </div>
     </div>

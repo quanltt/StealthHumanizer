@@ -65,7 +65,7 @@ function HeroSection() {
 
         {/* Scroll indicator */}
         <div className="mt-12 animate-fade-in-up-delay-2">
-          <button onClick={scrollToHumanizer} className="text-dark-500 hover:text-dark-300 transition-colors" aria-label="Scroll down">
+          <button onClick={scrollToHumanizer} className="text-dark-400 hover:text-dark-300 transition-colors" aria-label="Scroll down">
             <ChevronDown className="w-6 h-6 mx-auto animate-float" />
           </button>
         </div>
@@ -139,7 +139,7 @@ function TrustBadges() {
   return (
     <section className="py-8">
       <div className="container mx-auto px-4 max-w-7xl text-center">
-        <div className="flex flex-wrap justify-center gap-3 text-xs text-dark-500">
+        <div className="flex flex-wrap justify-center gap-3 text-xs text-dark-400">
           <span className="px-4 py-2 rounded-full glass-card hover:border-accent-500/30 transition-colors">&#x1f512; 100% Private</span>
           <span className="px-4 py-2 rounded-full glass-card hover:border-accent-500/30 transition-colors">&#x26a1; No Login Required</span>
           <span className="px-4 py-2 rounded-full glass-card hover:border-accent-500/30 transition-colors">&#x1f310; Open Source (MIT)</span>
