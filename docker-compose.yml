@@ -1,0 +1,4 @@
+services:
+  stealth-humanizer:
+    image: stealth-humanizer
+    build: .

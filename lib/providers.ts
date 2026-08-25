@@ -28,6 +28,16 @@ const ALLOWED_HOSTS = new Set([
 // provides for remote providers.
 const LOOPBACK_HOSTS = new Set(['localhost', '127.0.0.1', '0.0.0.0', '[::1]', '::1']);
 
+// vLLM's default port (8000) is a common collision on shared servers. Let it
+// be overridden via env var so a self-hosted router can bind to any free
+// port without a code change. MUST be NEXT_PUBLIC_-prefixed: this file is
+// bundled into the client too (Settings.tsx's "Test Key" button calls
+// testApiKey() -> generateWithProvider() directly in the browser, so the
+// browser needs the real value, not just the server). Next.js inlines
+// NEXT_PUBLIC_ vars at BUILD time — changing this requires `npm run build`
+// again, not just a process restart.
+const VLLM_BASE_URL = (process.env.NEXT_PUBLIC_VLLM_BASE_URL || 'http://localhost:8000').replace(/\/+$/, '');
+
 function sanitizeUrl(input: string): string {
   const parsed = new URL(input);
   if (LOOPBACK_HOSTS.has(parsed.hostname)) {
@@ -543,10 +553,10 @@ export const PROVIDERS: Provider[] = [
   {
     id: 'vllm',
     name: 'vLLM (Local/Self-hosted)',
-    description: 'Standard self-hosted vLLM or OpenAI-compatible instance (default: http://localhost:8000/v1).',
+    description: `Standard self-hosted vLLM or OpenAI-compatible instance (default: ${VLLM_BASE_URL}/v1). Override with the VLLM_BASE_URL env var if this port is taken.`,
     free: true,
-    apiUrl: 'http://localhost:8000/v1/chat/completions',
-    getApiKeyUrl: 'http://localhost:8000',
+    apiUrl: `${VLLM_BASE_URL}/v1/chat/completions`,
+    getApiKeyUrl: VLLM_BASE_URL,
     defaultModel: 'default',
     models: ['default'],
     placeholder: 'vllm',
@@ -1183,7 +1193,7 @@ export async function generateWithProvider(
 
     case 'vllm':
       return openAICompatibleGenerate(
-        'http://localhost:8000/v1/chat/completions',
+        `${VLLM_BASE_URL}/v1/chat/completions`,
         apiKey || 'vllm', systemPrompt, fullUserPrompt, model, options
       );
 

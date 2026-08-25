@@ -1,0 +1,10 @@
+FROM node:20-slim
+WORKDIR /app
+# Install git for the pipeline dependencies
+RUN apt-get update && apt-get install -y git && rm -rf /var/lib/apt/lists/*
+COPY package*.json ./
+RUN npm ci
+COPY . .
+RUN npm run build
+EXPOSE 3000
+CMD ["npm", "start"]
