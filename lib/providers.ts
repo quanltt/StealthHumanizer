@@ -152,8 +152,8 @@ export const PROVIDERS: Provider[] = [
     apiUrl: 'https://generativelanguage.googleapis.com/v1beta/models',
     getApiKeyUrl: 'https://aistudio.google.com/apikey',
     docsUrl: 'https://ai.google.dev/docs',
-    defaultModel: 'gemini-2.5-flash',
-    models: ['gemini-2.5-flash', 'gemini-2.5-pro', 'gemini-2.0-flash', 'gemini-2.0-flash-lite'],
+    defaultModel: 'gemini-3.6-flash',
+    models: ['gemini-3.6-flash', 'gemini-2.5-flash', 'gemini-2.5-pro', 'gemini-2.0-flash', 'gemini-2.0-flash-lite'],
     placeholder: 'AIza...',
   },
   {
@@ -713,7 +713,7 @@ async function geminiGenerate(
   apiKey: string,
   systemPrompt: string,
   userPrompt: string,
-  model: string = 'gemini-2.5-flash',
+  model: string = 'gemini-3.6-flash',
   options: GenerationOptions = {}
 ): Promise<string> {
   const safeModel = encodeURIComponent(sanitizeGeminiModel(model));

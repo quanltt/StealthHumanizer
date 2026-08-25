@@ -39,6 +39,7 @@ const nextConfig = {
       },
     ];
   },
+  allowedDevOrigins: ['sth.quanltt-ai.top'],  
 }
 
 module.exports = nextConfig

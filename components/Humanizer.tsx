@@ -162,7 +162,17 @@ export default function Humanizer({ showToast, onGoToSettings, isFirstVisit }: H
   const handleDomainChange = (d: DomainId) => { setDomain(d); setPreferredDomain(d); };
 
   const wordCount = countWords(inputText);
-  const hasAnyApiKey = Object.values(getApiKeys()).some(v => v && v.trim().length > 0);
+  // Pre-existing upstream hydration bug: reading getApiKeys() (localStorage)
+  // directly in render diverges between server (always {}) and client (real
+  // keys), causing a hydration mismatch on first paint. The 'mounted' guard
+  // below makes the very first client render match the server exactly
+  // (mounted=false -> hasAnyApiKey=false, same banner SSR produced); the
+  // real value is computed right after mount, and on every render after
+  // that — so it still stays reactive to keys added/removed elsewhere
+  // (e.g. Settings) without needing a storage-event listener.
+  const [mounted, setMounted] = useState(false);
+  useEffect(() => { setMounted(true); }, []);
+  const hasAnyApiKey = mounted && Object.values(getApiKeys()).some(v => v && v.trim().length > 0);
 
   useEffect(() => {
     const queryText = new URLSearchParams(window.location.search).get('text');
